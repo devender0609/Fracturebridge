@@ -1,10 +1,15 @@
-# FractureBridge guided demo — 60–90 seconds
+# FractureBridge guided demo
 
-1. **Overview** — “This starts after the fracture is already documented. The home screen shows what needs action today, not just analytics.”
-2. **Worklist** — “Cases are sorted by operational attention: who needs human review, who has no owner, and how long the case has been open.”
-3. **Open Margaret Ellison** — “Her CT for abdominal pain also documented a chronic-appearing L1 compression deformity.”
-4. **Why flagged** — “FractureBridge highlights the exact report language and shows the connected sources it checked. No relevant follow-up evidence was found in this demonstration record; that is a review signal, not a conclusion.”
-5. **Human review + ownership** — “A person confirms fracture context, outside care, and whether further follow-up is appropriate, then assigns a named owner.”
-6. **Clinician + patient engagement** — “The clinician sees a concise review message. The patient message is drafted in plain language but cannot be sent without human approval.”
-7. **Close the loop** — “The case remains visible through contact, evaluation, and documented closure.”
-8. **Analytics / Safety** — “The pilot measures case-finding, operational burden, and follow-up completion. AI searches and summarizes; people decide.”
+**1 — Overview.** “The fracture is already documented. FractureBridge finds a potential follow-up gap, creates accountable human ownership, and keeps the case visible until it is appropriately resolved.”
+
+**2 — Margaret’s case.** “This CT was ordered for abdominal pain. The report also documents a chronic-appearing L1 vertebral compression deformity.”
+
+**3 — Evidence check.** “The connected demonstration record contains no relevant bone-health follow-up evidence. That is a review signal, not proof that no care occurred.”
+
+**4 — Human decision.** “A reviewer confirms clinical context, checks outside care, and assigns an owner. AI does not diagnose osteoporosis or decide treatment.”
+
+**5 — Patient engagement.** “Patient-facing language is drafted in plain language but cannot be sent until a human approves it.”
+
+**6 — Analytics.** “The proposed pilot measures case-finding performance, workload, and follow-up completion. Longer-term fracture outcomes are separated and not claimed as pilot results.”
+
+**7 — Safety & design.** “Fracture liaison services are established prevention models. FractureBridge is designed to complement them by finding potential incidental cases and closing the accountability loop.”

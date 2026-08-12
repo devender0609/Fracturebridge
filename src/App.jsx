@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
-import { Home, Search, BarChart3, ShieldCheck, ChevronRight, ChevronLeft, Play, Check } from "lucide-react";
+import { Home, Search, BarChart3, ShieldCheck, ChevronRight, ChevronLeft, Play, Check, Stethoscope } from "lucide-react";
 import { cx, CASES } from "./data";
 import Overview from "./views/Overview";
 import Worklist from "./views/Worklist";
@@ -15,13 +15,12 @@ const NAV = [
 ];
 
 const DEMO_STEPS = [
-  { view: "overview", id: null, say: "FractureBridge starts after the fracture is already documented. It finds a potential follow-up gap and keeps it visible until a human resolves it." },
+  { view: "overview", id: null, say: "FractureBridge starts after a fracture is already documented. It finds a potential follow-up gap and keeps it visible until a person resolves it." },
   { view: "case", id: "FB-04417", say: "Margaret had a CT for abdominal pain. The report also documents a chronic-appearing L1 compression deformity." },
-  { view: "case", id: "FB-04417", say: "The connected demonstration record contains no relevant bone-health follow-up evidence. That is a review signal, not a conclusion." },
-  { view: "case", id: "FB-04417", say: "A human reviewer confirms context, checks outside care, and assigns an accountable owner. AI does not make the clinical decision." },
-  { view: "case", id: "FB-04417", say: "Patient-facing language is drafted for review and cannot be sent without human approval." },
-  { view: "analytics", id: null, say: "The pilot measures case finding, operational burden, and follow-up completion. Longer-term fracture outcomes are explicitly separated." },
-  { view: "safety", id: null, say: "The design boundary is simple: AI searches and summarizes; people decide, communicate, and close the loop." },
+  { view: "case", id: "FB-04417", say: "No relevant bone-health follow-up evidence is visible in the connected demonstration record. That is a review signal, not a conclusion." },
+  { view: "case", id: "FB-04417", say: "A human reviewer confirms context, checks for outside care, assigns an accountable owner, and decides the next step." },
+  { view: "analytics", id: null, say: "A pilot would measure case finding, workflow burden, and care-process completion before making longer-term outcome claims." },
+  { view: "safety", id: null, say: "The boundary is simple: AI searches and summarizes; people decide, communicate, and close the loop." },
 ];
 
 export default function FractureBridge() {
@@ -41,29 +40,30 @@ export default function FractureBridge() {
   const navView = view === "case" ? "worklist" : view;
 
   return <div className="flex min-h-screen w-full bg-slate-50 font-sans text-slate-800">
-    <nav className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+    <nav className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
       <button onClick={()=>setView("overview")} className="border-b border-slate-100 px-5 py-5 text-left">
         <div className="flex items-center gap-2"><div className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-800 font-mono text-xs font-bold text-white">FB</div><div className="text-lg font-semibold text-slate-900">FractureBridge</div></div>
         <div className="mt-2 text-xs leading-snug text-slate-500">Accountable follow-up after a fracture is already found</div>
       </button>
       <div className="flex-1 py-3">{NAV.map(n=>{const Icon=n.icon; const active=navView===n.key; return <button key={n.key} onClick={()=>setView(n.key)} className={cx("flex w-full items-center gap-3 border-l-2 px-5 py-2.5 text-sm transition-colors",active?"border-teal-700 bg-teal-50 font-medium text-teal-900":"border-transparent text-slate-600 hover:bg-slate-50")}><Icon size={16}/>{n.label}</button>})}</div>
       <div className="border-t border-slate-100 p-4">
-        <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">Demo role</label>
-        <select value={role} onChange={(e)=>setRole(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs text-slate-700">
-          {["Care coordinator","Clinician","Quality leader"].map(r=><option key={r}>{r}</option>)}
-        </select>
-        <button onClick={()=>demo>=0?setDemo(-1):goDemo(0)} className={cx("mt-3 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",demo>=0?"bg-slate-900 text-white":"border border-slate-300 text-slate-700 hover:bg-slate-50")}><Play size={13}/>{demo>=0?"Exit demo":"Guided demo"}</button>
-        <div className="mt-3 text-[11px] leading-relaxed text-slate-400">Prototype · fictional patients · no EHR connection</div>
+        <div className="mb-3 rounded-lg bg-slate-50 p-3">
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-700"><Stethoscope size={13}/>Demo role</div>
+          <select value={role} onChange={e=>setRole(e.target.value)} className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600">
+            {["Care coordinator","Clinician","Quality leader"].map(r=><option key={r}>{r}</option>)}
+          </select>
+        </div>
+        <button onClick={()=>demo>=0?setDemo(-1):goDemo(0)} className={cx("flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",demo>=0?"bg-slate-900 text-white":"border border-slate-300 text-slate-700 hover:bg-slate-50")}><Play size={13}/>{demo>=0?"Exit demo":"Guided demo"}</button>
+        <div className="mt-3 font-mono text-xs leading-relaxed text-slate-400">Prototype · fictional patients · no EHR connection</div>
       </div>
     </nav>
     <main className="min-w-0 flex-1 pb-24">
       <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-3 md:hidden"><div className="flex h-7 w-7 items-center justify-center rounded bg-teal-800 font-mono text-xs font-bold text-white">FB</div>{NAV.map(n=><button key={n.key} onClick={()=>setView(n.key)} className={cx("shrink-0 rounded-full border px-3 py-1 text-xs",navView===n.key?"border-teal-700 bg-teal-700 text-white":"border-slate-300 text-slate-600")}>{n.label}</button>)}</div>
       <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-center font-mono text-xs uppercase tracking-widest text-amber-800">Demonstration prototype · fictional data · not connected to any clinical system</div>
-
-      <div className="mx-auto max-w-7xl px-5 py-10 sm:px-7 lg:px-10">
-        {view==="overview"&&<Overview cases={cases} onOpen={open} role={role}/>} 
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        {view==="overview"&&<Overview cases={cases} onOpen={open}/>} 
         {view==="worklist"&&<Worklist cases={cases} onOpen={open} role={role}/>} 
-        {view==="case"&&current&&<CaseDetail key={current.id} c={current} onBack={()=>setView("worklist")} update={update} notify={setToast} onStep={step} position={`${idx+1} of ${cases.length}`} role={role}/>} 
+        {view==="case"&&current&&<CaseDetail key={current.id} c={current} onBack={()=>setView("worklist")} update={update} notify={setToast} onStep={step} position={`${idx+1} of ${cases.length}`}/>} 
         {view==="case"&&!current&&<Worklist cases={cases} onOpen={open} role={role}/>} 
         {view==="analytics"&&<Suspense fallback={<div className="py-24 text-center text-sm text-slate-400">Loading analytics…</div>}><Measures/></Suspense>}
         {view==="safety"&&<HowItWorks/>}

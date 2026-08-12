@@ -21,7 +21,7 @@ case until the loop is closed or closed with a stated reason.
 ## What the system does — and does not do
 
 **Does:** screens report text for vertebral compression-fracture language; extracts level, chronicity, and how
-explicit the language is; searches configured follow-up sources across defined prototype lookback windows; stands down
+explicit the language is; searches nine follow-up sources across defined lookback windows; stands down
 when follow-up is already documented; orders the queue by explicit, inspectable triage rules;
 summarizes the case; drafts patient-readable language for a human to edit and approve; routes to a
 named owner with a timestamped audit trail.
@@ -94,11 +94,11 @@ src/
   ui.jsx                 Design atoms and the Bridge stage tracker
   App.jsx                Shell, navigation, guided-demo runner
   views/
-    Overview.jsx         Executive overview and guided demo entry
-    Worklist.jsx         Focused operational review queue with list/board views
-    CaseDetail.jsx       Report, evidence review, ownership, communication, audit
-    Measures.jsx         Proposed pilot measurement framework
-    HowItWorks.jsx       Safety boundaries, workflow, positioning, conceptual integration
+    Worklist.jsx         Case-finding funnel and the review queue
+    CaseDetail.jsx       Report, extraction, follow-up check, ownership, letter, audit
+    LoopBoard.jsx        Six-lane operational board plus excluded and verified cases
+    Measures.jsx         Four categories of pilot instrumentation (Recharts; lazy-loaded)
+    HowItWorks.jsx       Scope limits, positioning, architecture, governance
 docs/
   demo-script.md         75-second walkthrough for a panel
 ```
@@ -114,7 +114,7 @@ reviewer must choose from.
 ### Where a real integration would attach
 
 The screening step, the follow-up check, and the letter drafting are deliberately separate so each can
-be validated, replaced, or switched off on its own. The **Safety & design** page describes the data each
+be validated, replaced, or switched off on its own. The **How it works** page lists the data each
 would require — `DiagnosticReport`, `Observation`, `ServiceRequest`, `MedicationRequest`,
 `DocumentReference`, `Condition` — as planned integrations. None exist in this repository.
 
@@ -131,7 +131,7 @@ and aging. Changing a stage colour in one place changes it everywhere.
 
 1. **Analytics are illustrative only.** The dashboard intentionally avoids invented pre/post performance claims. Replace demonstration values with real pilot data only after validation.
 
-2. **The prototype follow-up check may depend on note-text search**, which is the hardest of the eight
+2. **The nine-source follow-up check depends on note-text search**, which is the hardest of the eight
    listed integrations to actually obtain. Scope the pilot around what the data feed can really
    deliver.
 
@@ -144,8 +144,3 @@ neither. The claim here is narrower: the combination of case identification, fol
 accountable routing, clinician engagement, patient engagement, and closed-loop tracking, over
 information the health system already holds — aimed at the incidental vertebral fracture that never
 may otherwise enter an established fracture liaison or bone-health pathway.
-
-
-## v0.4 design pass
-
-The v0.4 refinement reduces visual density and redundancy: the Worklist is action-first, the Overview is executive-readable, the patient case uses progressive disclosure for evidence and communications, and the Safety & design page uses a three-phase handoff instead of a dense pipeline. See `CHANGELOG_v0.4.md`.

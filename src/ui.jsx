@@ -5,13 +5,13 @@ import { cx, STAGES, STAGE_INDEX, STAGE_STYLE } from "./data";
 /* ------------------------------ atoms ------------------------------ */
 
 export const Eyebrow = ({ children, className }) => (
-  <div className={cx("text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400", className)}>
+  <div className={cx("font-mono text-xs uppercase tracking-widest text-slate-400", className)}>
     {children}
   </div>
 );
 
 export const Card = ({ children, className }) => (
-  <section className={cx("overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]", className)}>
+  <section className={cx("overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm", className)}>
     {children}
   </section>
 );

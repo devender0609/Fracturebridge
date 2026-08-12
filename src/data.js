@@ -108,12 +108,12 @@ export const CASES = [
     priorityFactors: [
       "Age 74",
       "Prior low-trauma fracture documented (distal radius, 2024)",
-      "No bone-health follow-up evidence found in the demonstration record",
+      "No relevant bone-health follow-up evidence found in the connected demonstration record",
       "Report language explicit, not equivocal",
     ],
     report: MARGARET_REPORT,
     verify: [
-      "Confirm the L1 deformity is degenerative-fragility in origin and not traumatic or pathologic",
+      "Confirm whether the L1 deformity is consistent with a fragility-fracture context and not traumatic or pathologic",
       "Confirm the 2024 wrist fracture was low-energy",
       "Confirm no bone-health care is being delivered outside this health system",
     ],
@@ -252,7 +252,7 @@ export const CASES = [
     owner: null,
     letterApproved: false,
     letter:
-      "Dear Mr. Vasquez,\n\nYour recent CT scan noted a small compression fracture in your mid-back. This can sometimes be a sign of weakened bone. Your care team would like to review whether a bone-density test would be helpful.\n\n— Bone Health Program, Austin market",
+      "Dear Mr. Vasquez,\n\nYour recent CT scan noted a compression deformity in one of the bones of your mid-back. In some adults, this type of finding may be associated with weakened bone. Your care team would like to review whether additional bone-health evaluation may be appropriate.\n\n— Bone Health Program, Austin market",
     audit: [
       { ts: "Jul 1, 2026 · 9:02a", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Jul 2, 2026 · 2:04a", actor: "FractureBridge", ai: true, text: "Flagged for review. Priority: Medium." },

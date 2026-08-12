@@ -25,3 +25,7 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* v0.4 visual refinement: calm spacing and readable clinical density */
+button, select, textarea { font: inherit; }
+::selection { background: #ccfbf1; color: #134e4a; }

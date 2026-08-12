@@ -1,7 +1,7 @@
 {
   "name": "fracturebridge",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "FractureBridge \u2014 accountable, human-reviewed care-gap closure after a vertebral compression-fracture finding is documented. Demonstration prototype with fictional data.",
   "scripts": {

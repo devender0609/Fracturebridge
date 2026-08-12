@@ -1,6 +1,6 @@
 # FractureBridge
 
-**Accountable care-gap closure after a fragility fracture has already been found.**
+**Accountable care-gap closure after a vertebral compression-fracture finding has already been documented.**
 
 A woman in her seventies has a CT for abdominal pain. The radiologist documents a chronic L1
 compression deformity. The abdominal problem is treated. The fracture — a warning sign for the next
@@ -20,7 +20,7 @@ case until the loop is closed or closed with a stated reason.
 
 ## What the system does — and does not do
 
-**Does:** screens report text for fragility-fracture language; extracts level, chronicity, and how
+**Does:** screens report text for vertebral compression-fracture language; extracts level, chronicity, and how
 explicit the language is; searches nine follow-up sources across defined lookback windows; stands down
 when follow-up is already documented; orders the queue by explicit, inspectable triage rules;
 summarizes the case; drafts patient-readable language for a human to edit and approve; routes to a
@@ -129,8 +129,8 @@ and aging. Changing a stage colour in one place changes it everywhere.
 
 ## Two things to fix before this is shown as evidence
 
-1. **The 19% → 52% baseline comparison in Measures is invented.** Either replace it with a real local
-   denominator or relabel it as illustrative. It will be the first number a reviewer challenges.
+1. **Analytics are illustrative only.** The dashboard intentionally avoids invented pre/post performance claims. Replace demonstration values with real pilot data only after validation.
+
 2. **The nine-source follow-up check depends on note-text search**, which is the hardest of the eight
    listed integrations to actually obtain. Scope the pilot around what the data feed can really
    deliver.
@@ -143,4 +143,4 @@ Fracture liaison services and opportunistic fracture-detection tools already exi
 neither. The claim here is narrower: the combination of case identification, follow-up verification,
 accountable routing, clinician engagement, patient engagement, and closed-loop tracking, over
 information the health system already holds — aimed at the incidental vertebral fracture that never
-arrives at an FLS door.
+may otherwise enter an established fracture liaison or bone-health pathway.

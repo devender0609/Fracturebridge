@@ -1,9 +1,9 @@
 {
   "name": "fracturebridge",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.0",
   "type": "module",
-  "description": "FractureBridge — accountable care-gap closure after a fragility fracture is already found. Demonstration prototype with fictional data.",
+  "description": "FractureBridge \u2014 accountable, human-reviewed care-gap closure after a vertebral compression-fracture finding is documented. Demonstration prototype with fictional data.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

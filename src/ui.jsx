@@ -22,7 +22,7 @@ export const CardHead = ({ eyebrow, title, right, accent = "bg-slate-300" }) => 
       <span className={cx("mt-1 h-8 w-1 shrink-0 rounded-full", accent)} />
       <div>
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h3 className="mt-0.5 font-serif text-lg leading-snug text-slate-900">{title}</h3>
+        <h3 className="mt-0.5 text-lg font-semibold leading-snug text-slate-900">{title}</h3>
       </div>
     </div>
     {right && <div className="shrink-0">{right}</div>}
@@ -61,7 +61,7 @@ export const StatusChip = ({ stage, className }) => {
 
 export const Stat = ({ n, label, sub, tone = "text-slate-900" }) => (
   <div className="px-5 py-4">
-    <div className={cx("font-serif text-3xl leading-none tabular-nums", tone)}>{n}</div>
+    <div className={cx("text-3xl font-semibold leading-none tabular-nums", tone)}>{n}</div>
     <div className="mt-1.5 text-sm font-medium leading-tight text-slate-700">{label}</div>
     {sub && <div className="mt-0.5 font-mono text-xs text-slate-400">{sub}</div>}
   </div>

@@ -4,7 +4,7 @@ import { cx } from "../data";
 import { Eyebrow, Card, CardHead, AiTag, HumanTag } from "../ui";
 
 const DOES = [
-  "Reads radiology reports that already exist and flags fragility-fracture language",
+  "Reads existing radiology reports and flags vertebral compression-fracture language for review",
   "Extracts the level, the chronicity as reported, and how explicit the language is",
   "Searches nine follow-up sources across defined lookback windows",
   "Stands down when follow-up is already documented",
@@ -27,7 +27,7 @@ const DOES_NOT = [
 
 const PIPE = [
   { t: "Screen", who: "AI", d: "Report text in, fracture language out" },
-  { t: "Verify", who: "AI", d: "Nine sources, fixed lookback windows" },
+  { t: "Check", who: "AI", d: "Available follow-up evidence across connected sources" },
   { t: "Review", who: "Human", d: "Confirm, exclude with a reason, or stand down" },
   { t: "Own", who: "Human", d: "Named person, clock running" },
   { t: "Close", who: "Human", d: "Evaluation and plan documented" },
@@ -40,7 +40,7 @@ const DIFFS = [
   },
   {
     t: "Not a replacement for a fracture liaison service",
-    p: "An FLS sees the patients who arrive at its door — mostly hip and clinical fractures. The incidental vertebral fracture on an abdominal CT never arrives. This is the referral engine an FLS never had.",
+    p: "Fracture liaison services are established secondary-fracture prevention models. FractureBridge can complement them by helping identify incidental vertebral-fracture cases that may otherwise never enter the pathway.",
   },
   {
     t: "Not an opportunistic fracture detector",
@@ -55,7 +55,7 @@ const SOURCES = [
   ["Medications", "FHIR MedicationRequest", "Osteoporosis therapy, glucocorticoids"],
   ["Referrals", "FHIR ServiceRequest", "Bone health, endocrinology, FLS"],
   ["Notes", "FHIR DocumentReference", "Documented assessment of the finding"],
-  ["Problem list", "FHIR Condition", "Prior fragility fracture, malignancy"],
+  ["Problem list", "FHIR Condition", "Prior fracture history, malignancy context"],
   ["Patient messaging", "Portal / mail vendor", "Approved letters only"],
 ];
 
@@ -140,7 +140,7 @@ function HowItWorks() {
           <CardHead
             accent="bg-sky-500"
             eyebrow="Architecture"
-            title="Data this would need"
+            title="Conceptual integration architecture"
             right={<span className="whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-mono text-xs uppercase tracking-wider text-amber-700">Planned · none connected</span>}
           />
           <table className="w-full text-sm">
@@ -155,8 +155,7 @@ function HowItWorks() {
             </tbody>
           </table>
           <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs leading-relaxed text-slate-600">
-            Everything here is simulated. Screening, the follow-up check and letter drafting are separated so each can be
-            validated, replaced or switched off on its own.
+            Everything here is simulated. Potential future integration sources may include these resources, but no EHR connections exist in this prototype. Screening, follow-up checking, and drafting remain separable so each can be validated, replaced, or switched off independently.
           </div>
         </Card>
 
@@ -199,13 +198,13 @@ function HowItWorks() {
       </div>
 
       <Card>
-        <CardHead accent="bg-indigo-500" eyebrow="Pilot" title="What 6–12 months in one market would answer" />
+        <CardHead accent="bg-indigo-500" eyebrow="Proposed pilot" title="What a 6–12 month pilot could answer" />
         <div className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2 lg:grid-cols-3">
           {[
             ["Can the cases be found reliably?", "Screen yield, confirmation rate, exclusion reasons"],
             ["How many need a human?", "Routed cases per week and per 1,000 reports"],
             ["Can an existing team carry it?", "Reviewer minutes per case, backlog age"],
-            ["Does follow-up improve?", "Evaluation completion, pre/post within market"],
+            ["Does follow-up improve?", "Evaluation initiation and completion"],
             ["What breaks?", "False-positive patterns, unreachable patients"],
             ["Would it scale?", "Effort per closed case, transfer of rules to a second market"],
           ].map(([q, a]) => (

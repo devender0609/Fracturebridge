@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Check, X, AlertTriangle, UserCheck, Lock, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X, AlertTriangle, UserCheck, Lock, ChevronDown, Database, Clock3, UserRound, ShieldCheck } from "lucide-react";
 import { cx, TEAM, EXCLUSION_REASONS, STAGE_STYLE } from "../data";
 import { Eyebrow, Card, CardHead, AiTag, HumanTag, StatusChip, Bridge } from "../ui";
 
@@ -12,7 +12,7 @@ const stamp = () => {
   );
 };
 
-function CaseDetail({ c, onBack, update, notify, onStep, position }) {
+function CaseDetail({ c, onBack, update, notify, onStep, position, role = "Care coordinator" }) {
   const [letter, setLetter] = useState(c.letter);
   const [editing, setEditing] = useState(false);
   const [assignTo, setAssignTo] = useState(TEAM[0]);
@@ -32,6 +32,25 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
   const found = c.followUp.filter((f) => f.status === "found").length;
   const empty = c.followUp.filter((f) => f.status === "none").length;
   const visible = fullReport ? c.report : c.report.filter((l) => l.hl || l.head);
+  const evidenceGroups = [
+    {
+      title: "Existing bone-health management",
+      tone: "teal",
+      items: c.followUp.filter(f => /pharmacotherapy|assessment|FLS|Endocrinology/i.test(f.label)),
+    },
+    {
+      title: "Follow-up underway",
+      tone: "sky",
+      items: c.followUp.filter(f => /DXA \/ BMD result|DXA order|clinical review/i.test(f.label)),
+    },
+    {
+      title: "Risk / context signals",
+      tone: "violet",
+      items: c.followUp.filter(f => /Prior fracture|Glucocorticoid|Calcium|vitamin/i.test(f.label)),
+    },
+  ].filter(g=>g.items.length);
+  const sourcesChecked = [...new Set(c.followUp.map(f=>f.source))];
+  const operationalAlert = ["review","owned"].includes(c.stage) && c.days > 30;
 
   const Primary = ({ children, ...p }) => (
     <button
@@ -63,12 +82,12 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow>{c.id} · MRN {c.mrn} · fictional patient</Eyebrow>
-          <h1 className="mt-1 font-serif text-3xl text-slate-900">{c.name}</h1>
+          <h1 className="mt-1 text-3xl font-semibold text-slate-900">{c.name}</h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600">
             {c.age}-year-old {c.sex === "F" ? "woman" : "man"}. {c.finding}, documented {c.reportDate} on a {c.exam} ordered for {c.indication.toLowerCase()}.{" "}
             {empty > 0 && (
               <span className="text-amber-700">
-                {empty} of {c.followUp.length} follow-up sources returned nothing in {c.days} days.
+                No follow-up evidence was found in {empty} of {c.followUp.length} checked sources in the connected demonstration record.
               </span>
             )}
           </p>
@@ -81,6 +100,24 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
           )}
           <StatusChip stage={c.stage} />
         </div>
+      </div>
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <Card className={cx("p-4", operationalAlert ? "border-rose-200 bg-rose-50" : "bg-white")}>
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-slate-500"><Clock3 size={14}/>Days since finding</div>
+          <div className={cx("mt-2 text-2xl font-semibold", operationalAlert ? "text-rose-700" : "text-slate-900")}>{c.days}</div>
+          <div className="mt-1 text-xs text-slate-500">Operational aging signal — not a clinical risk score</div>
+        </Card>
+        <Card className="p-4 bg-amber-50 border-amber-200">
+          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-amber-700"><Database size={14}/>Follow-up evidence</div>
+          <div className="mt-2 text-sm font-semibold text-amber-900">{["review","owned"].includes(c.stage) ? "No relevant evidence found" : "Follow-up underway or resolved"}</div>
+          <div className="mt-1 text-xs text-amber-800">Connected demonstration sources only</div>
+        </Card>
+        <Card className={cx("p-4", c.owner ? "border-teal-200 bg-teal-50" : "bg-slate-50")}>
+          <div className={cx("flex items-center gap-2 text-xs font-medium uppercase tracking-wider", c.owner ? "text-teal-700" : "text-slate-500")}><UserRound size={14}/>Owner</div>
+          <div className="mt-2 text-sm font-semibold text-slate-900">{c.owner ? c.owner.split(" —")[0] : "Unassigned"}</div>
+          <div className="mt-1 text-xs text-slate-500">{c.owner ? "Named person accountable for the next step" : "Human assignment required"}</div>
+        </Card>
       </div>
 
       <Card className="mb-6 px-5 py-5">
@@ -131,13 +168,13 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
           </Card>
 
           <Card>
-            <CardHead accent="bg-violet-500" eyebrow="Step 1 · extraction" title="What the AI read out of the report" right={<AiTag />} />
+            <CardHead accent="bg-violet-500" eyebrow="Step 1 · extraction" title="What was extracted from the report" right={<AiTag />} />
             <dl className="grid grid-cols-1 gap-px bg-slate-100 sm:grid-cols-2">
               {[
                 ["Finding", c.finding],
                 ["Level", c.level],
                 ["Chronicity as reported", c.chronicity],
-                ["Extraction confidence", c.confidence],
+                ["Extraction certainty", c.confidence],
               ].map(([k, v]) => (
                 <div key={k} className="bg-white px-5 py-3">
                   <dt className="font-mono text-xs uppercase tracking-wider text-slate-400">{k}</dt>
@@ -164,10 +201,10 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
             <CardHead
               accent="bg-teal-500"
               eyebrow="Step 2 · follow-up check"
-              title="What was searched before this case was created"
+              title="Available follow-up evidence checked before routing"
               right={
                 <span className={cx("rounded-full border px-2.5 py-1 font-mono text-xs", found ? "border-teal-200 bg-teal-50 text-teal-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
-                  {found} found · {c.followUp.length - found} not found
+                  {found} evidence present · {c.followUp.length - found} not found
                 </span>
               }
             />
@@ -182,34 +219,22 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
                 />
               ))}
             </div>
-            <div className="divide-y divide-slate-100">
-              {c.followUp.map((f) => (
-                <div key={f.label} className="flex items-start gap-3 px-5 py-3">
-                  <span
-                    className={cx(
-                      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                      f.status === "found"
-                        ? "border-teal-600 bg-teal-600 text-white"
-                        : f.status === "partial"
-                        ? "border-slate-300 bg-white text-slate-400"
-                        : "border-amber-300 bg-amber-50 text-amber-600"
-                    )}
-                  >
-                    {f.status === "found" ? <Check size={12} strokeWidth={3} /> : f.status === "partial" ? <span className="text-xs">~</span> : <X size={12} strokeWidth={3} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="text-sm font-medium text-slate-800">{f.label}</span>
-                      <span className="font-mono text-xs text-slate-400">{f.source} · {f.lookback}</span>
-                    </div>
-                    <div className="text-sm text-slate-600">{f.note}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-4 px-5 py-4">
+              {evidenceGroups.map((group)=><div key={group.title} className="overflow-hidden rounded-xl border border-slate-200">
+                <div className={cx("px-4 py-2.5 text-xs font-semibold uppercase tracking-wider", group.tone === "teal" ? "bg-teal-50 text-teal-800" : group.tone === "sky" ? "bg-sky-50 text-sky-800" : "bg-violet-50 text-violet-800")}>{group.title}</div>
+                <div className="divide-y divide-slate-100">{group.items.map((f)=><div key={f.label} className="flex items-start gap-3 px-4 py-3">
+                  <span className={cx("mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",f.status === "found" ? "border-teal-600 bg-teal-600 text-white" : f.status === "partial" ? "border-slate-300 bg-white text-slate-400" : "border-amber-300 bg-amber-50 text-amber-600")}>{f.status === "found" ? <Check size={12} strokeWidth={3}/> : f.status === "partial" ? <span className="text-xs">~</span> : <X size={12} strokeWidth={3}/>}</span>
+                  <div className="min-w-0 flex-1"><div className="flex flex-wrap items-baseline gap-x-2"><span className="text-sm font-medium text-slate-800">{f.label}</span><span className="font-mono text-xs text-slate-400">{f.source} · {f.lookback}</span></div><div className="text-sm text-slate-600">{f.note}</div></div>
+                </div>)}</div>
+              </div>)}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500"><Database size={14}/>Connected sources reviewed</div>
+                <div className="mt-2 flex flex-wrap gap-2">{sourcesChecked.map(src=><span key={src} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">{src}</span>)}</div>
+                <p className="mt-3 text-xs leading-relaxed text-slate-500">Absence of evidence in these sources does not prove care did not occur. Outside-system care and unavailable documentation require human confirmation.</p>
+              </div>
             </div>
             <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs leading-relaxed text-slate-600">
-              An empty row is not evidence of poor care. Care may have happened elsewhere, or been appropriate to defer.
-              That is why this is a review task and not a conclusion.
+              No evidence in a connected source does not prove that care did not happen. Care may have occurred elsewhere or may appropriately have been deferred. Human review is required before action.
             </div>
           </Card>
         </div>
@@ -222,6 +247,10 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
               <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="font-mono text-xs uppercase tracking-wider text-slate-400">Current owner</div>
                 <div className="mt-0.5 text-sm font-medium text-slate-900">{c.owner || "Unassigned — sitting in the review queue"}</div>
+              </div>
+              <div className="mb-4 rounded-lg border border-teal-100 bg-teal-50/60 px-4 py-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-700"><ShieldCheck size={14}/>Human review checklist · {role}</div>
+                <ul className="mt-2 space-y-1 text-sm text-slate-700"><li>• Does the imaging finding fit a likely fragility-fracture context?</li><li>• Is bone-health care already occurring elsewhere?</li><li>• Is additional follow-up appropriate for this patient?</li></ul>
               </div>
 
               {c.stage === "review" && (
@@ -242,12 +271,12 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
                     onClick={() =>
                       act(
                         { stage: "owned", owner: assignTo },
-                        { actor: TEAM[0], text: `Care gap confirmed after chart review. Case assigned to ${assignTo}.` },
+                        { actor: TEAM[0], text: `Potential care gap confirmed after chart review. Case assigned to ${assignTo}.` },
                         `Assigned to ${assignTo.split(",")[0]}`
                       )
                     }
                   >
-                    Confirm care gap and assign
+                    Confirm potential care gap & assign
                   </Primary>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -280,7 +309,7 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
                               setExcludeOpen(false);
                               act(
                                 { stage: "excluded", excludeReason: r },
-                                { actor: TEAM[0], text: `Excluded after review: ${r}. Reason recorded for false-positive analysis.` },
+                                { actor: TEAM[0], text: `Excluded after review: ${r}. Reason recorded for screening-exclusion analysis.` },
                                 "Excluded — reason recorded"
                               );
                             }}
@@ -346,12 +375,24 @@ function CaseDetail({ c, onBack, update, notify, onStep, position }) {
                   {c.stage === "closed"
                     ? "Loop closed. The case stays in the record for measurement and audit."
                     : c.stage === "excluded"
-                    ? `Excluded: ${c.excludeReason}. Counted as a false positive in the case-finding measures.`
+                    ? `Excluded: ${c.excludeReason}. Recorded as a screening exclusion for case-finding analysis.`
                     : "Follow-up was verified as already in place. No outreach was generated."}
                 </p>
               )}
             </div>
           </Card>
+
+          {c.stage !== "verified" && c.stage !== "excluded" && (
+            <Card>
+              <CardHead accent="bg-sky-500" eyebrow="Clinician communication" title="Concise review message" right={<AiTag>AI draft · verify</AiTag>} />
+              <div className="px-5 py-4">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
+                  <strong>{c.finding}</strong> documented on {c.exam} {c.days} days ago. No relevant bone-health follow-up evidence was identified in the connected demonstration record. Please verify fracture context, outside care, and whether additional follow-up is appropriate.
+                </div>
+                <div className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-slate-500"><Lock size={14} className="mt-0.5 shrink-0"/>This is a draft communication aid, not an autonomous recommendation or order.</div>
+              </div>
+            </Card>
+          )}
 
           {c.stage !== "verified" && c.stage !== "excluded" && (
             <Card>

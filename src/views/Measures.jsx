@@ -1,180 +1,70 @@
 import React from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  Cell,
-} from "recharts";
-import { AlertTriangle } from "lucide-react";
-import { EXCLUSION_DATA, WEEKLY, CASCADE, BASELINE } from "../data";
-import { Eyebrow, Card, CardHead, Stat } from "../ui";
+import { AlertTriangle, SearchCheck, Workflow, HeartPulse } from "lucide-react";
+import { Card, CardHead, Eyebrow, Stat } from "../ui";
 
-const axis = { fontSize: 11, fontFamily: "ui-monospace, monospace", fill: "#94a3b8" };
-
-const tip = {
-  contentStyle: {
-    borderRadius: 8,
-    border: "1px solid #e2e8f0",
-    fontSize: 12,
-    boxShadow: "0 4px 12px rgba(15,23,42,.08)",
+const sections = [
+  {
+    icon: SearchCheck,
+    accent: "bg-violet-500",
+    eyebrow: "Case finding",
+    title: "Can we find the right cases?",
+    metrics: [
+      ["Reports screened", "12,500", "illustrative volume"],
+      ["Potential cases", "24", "after report screening"],
+      ["Confirmed after review", "—", "to be measured"],
+      ["Screen exclusions", "—", "reasons reported"],
+    ],
   },
-};
+  {
+    icon: Workflow,
+    accent: "bg-sky-500",
+    eyebrow: "Operations",
+    title: "Can the workflow operate?",
+    metrics: [
+      ["Needs review", "9", "illustrative open queue"],
+      ["Owner assigned", "—", "to be measured"],
+      ["Time to review", "—", "to be measured"],
+      ["Reviewer burden", "—", "minutes per case"],
+    ],
+  },
+  {
+    icon: HeartPulse,
+    accent: "bg-teal-600",
+    eyebrow: "Care process",
+    title: "Does follow-up improve?",
+    metrics: [
+      ["Patient contacted", "—", "to be measured"],
+      ["Evaluation initiated", "—", "to be measured"],
+      ["Evaluation completed", "—", "to be measured"],
+      ["Care plan documented", "—", "to be measured"],
+    ],
+  },
+];
 
-function Measures() {
-  return (
-    <div>
-      <header className="mb-6">
-        <Eyebrow>Pilot instrumentation · 6 months · one market · simulated</Eyebrow>
-        <h1 className="mt-2 font-serif text-3xl text-slate-900">What a pilot would actually be able to prove</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-          Four categories, in the order a pilot can answer them. The fourth is the point of the program and the one six
-          months cannot deliver — so it is measured as a baseline, not claimed as a result.
-        </p>
-      </header>
-
-      <div className="space-y-6">
-        {/* 1 — case finding */}
-        <Card>
-          <CardHead accent="bg-violet-500" eyebrow="Category 1" title="Case finding — can it find the right patients?" />
-          <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 lg:grid-cols-4 lg:divide-y-0">
-            <Stat n="12,480" label="Reports screened" sub="CT, MR, radiograph" />
-            <Stat n="268" label="Patients with fracture language" sub="2.1% of reports" />
-            <Stat n="87%" label="Confirmed after human review" sub="84 of 97 routed" tone="text-teal-700" />
-            <Stat n="13" label="False positives" sub="each with a stated reason" tone="text-amber-600" />
-          </div>
-          <div className="px-5 py-4">
-            <Eyebrow>Why the 13 were excluded</Eyebrow>
-            <div className="mt-3 h-40">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={EXCLUSION_DATA} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <XAxis type="number" tick={axis} axisLine={false} tickLine={false} />
-                  <YAxis type="category" dataKey="reason" width={150} tick={axis} axisLine={false} tickLine={false} />
-                  <Tooltip cursor={{ fill: "#f8fafc" }} {...tip} />
-                  <Bar dataKey="n" name="cases" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={16} isAnimationActive={false} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-600">
-            Reviewer exclusions are the training signal for the screen. A rising bar is a defect report, not a nuisance.
-          </div>
-        </Card>
-
-        {/* 2 — operations */}
-        <Card>
-          <CardHead accent="bg-sky-500" eyebrow="Category 2" title="Operations — can a real team carry the volume?" />
-          <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 border-b border-slate-100 lg:grid-cols-4 lg:divide-y-0">
-            <Stat n="4/wk" label="New cases per week" sub="one market" />
-            <Stat n="1.8 d" label="Median time to review" sub="from report signature" />
-            <Stat n="6 d" label="Median time to patient contact" sub="from review" />
-            <Stat n="14 min" label="Reviewer time per case" sub="median, self-timed" />
-          </div>
-          <div className="px-5 py-4">
-            <Eyebrow>Cases found and cases closed, by week</Eyebrow>
-            <div className="mt-3 h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={WEEKLY} margin={{ left: -20, right: 8, top: 8 }}>
-                  <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="w" tick={axis} axisLine={false} tickLine={false} />
-                  <YAxis tick={axis} axisLine={false} tickLine={false} />
-                  <Tooltip {...tip} />
-                  <Line type="monotone" dataKey="found" name="found" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  <Line type="monotone" dataKey="closed" name="closed" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex gap-4 text-xs text-slate-600">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500" /> found</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> closed</span>
-            </div>
-            <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              Closure overtakes intake around week 13. At four cases a week, one fracture liaison nurse absorbs this
-              inside an existing role — the single most important scaling question, so it is measured from day one.
-            </p>
-          </div>
-        </Card>
-
-        {/* 3 — care process */}
-        <Card>
-          <CardHead accent="bg-teal-500" eyebrow="Category 3" title="Care process — did follow-up actually change?" />
-          <div className="grid grid-cols-1 divide-y divide-slate-100 lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-            <div className="px-5 py-4">
-              <Eyebrow>Where the 84 confirmed cases went</Eyebrow>
-              <div className="mt-3 h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={CASCADE} layout="vertical" margin={{ left: 8, right: 28 }}>
-                    <XAxis type="number" domain={[0, 90]} tick={axis} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="step" width={170} tick={{ ...axis, fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip cursor={{ fill: "#f8fafc" }} {...tip} />
-                    <Bar dataKey="n" name="patients" radius={[0, 4, 4, 0]} barSize={18} isAnimationActive={false}>
-                      {CASCADE.map((d) => (
-                        <Cell key={d.step} fill={d.hex} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            <div className="px-5 py-4">
-              <Eyebrow>Follow-up within 6 months of the report</Eyebrow>
-              <div className="mt-3 h-56">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={BASELINE} margin={{ left: -20, top: 8 }}>
-                    <CartesianGrid stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="period" tick={axis} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} unit="%" tick={axis} axisLine={false} tickLine={false} />
-                    <Tooltip {...tip} formatter={(v) => `${v}%`} />
-                    <Bar dataKey="pct" name="follow-up" radius={[4, 4, 0, 0]} barSize={64} isAnimationActive={false}>
-                      <Cell fill="#cbd5e1" />
-                      <Cell fill="#0f766e" />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-amber-700">
-                Illustrative figures. Pre/post within one market with no concurrent control — a service-improvement
-                signal, not a causal estimate. Replace with a real local denominator before this is shown as evidence.
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* 4 — outcomes */}
-        <Card>
-          <CardHead accent="bg-slate-400" eyebrow="Category 4" title="Outcomes — the part a pilot cannot claim" />
-          <div className="px-5 py-4">
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
-              <p className="text-sm leading-relaxed text-amber-900">
-                A 6–12 month pilot in one market cannot demonstrate a reduction in future fractures. The event rate is
-                too low and the follow-up too short. These are captured to establish a baseline and support a later
-                multi-market evaluation — not to be presented as a pilot result.
-              </p>
-            </div>
-            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {[
-                "Secondary fragility fracture within 24 months",
-                "Fracture-related admissions and length of stay",
-                "Treatment persistence at 12 months",
-                "Patient-reported understanding of the contact",
-              ].map((x) => (
-                <li key={x} className="flex items-start gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300" />
-                  {x}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Card>
-      </div>
+export default function Measures(){
+  return <div>
+    <header className="mb-6">
+      <Eyebrow>Proposed pilot measurement</Eyebrow>
+      <h1 className="mt-2 text-3xl font-semibold text-slate-900">Measure the workflow before claiming the outcome.</h1>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">The prototype shows what a pilot would measure. Values shown as numbers are illustrative only; dashes are intentionally left unfilled until real pilot data exist.</p>
+    </header>
+    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Illustrative pilot dashboard.</strong> Demonstration values only — not Ascension performance data.</div>
+    <div className="grid gap-6 lg:grid-cols-3">
+      {sections.map(({icon:Icon,accent,eyebrow,title,metrics})=><Card key={title}>
+        <CardHead accent={accent} eyebrow={eyebrow} title={title} right={<Icon size={18} className="text-slate-400"/>}/>
+        <div className="grid grid-cols-2 divide-x divide-y divide-slate-100">{metrics.map(([label,n,sub])=><Stat key={label} n={n} label={label} sub={sub}/>)}</div>
+      </Card>)}
     </div>
-  );
+    <Card className="mt-6">
+      <CardHead accent="bg-slate-400" eyebrow="Longer-term outcomes" title="Important, but not expected to be proven in an initial pilot"/>
+      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4">
+        {["Secondary fractures","Fracture-related hospitalizations","Long-term utilization","Treatment persistence"].map(x=><div key={x} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">{x}</div>)}
+      </div>
+      <div className="flex gap-2 border-t border-slate-100 bg-amber-50 px-5 py-3 text-sm text-amber-900"><AlertTriangle size={16} className="mt-0.5 shrink-0"/><span>A proposed 6–12 month pilot should focus on case-finding performance, operational burden, and care-process completion. It should not claim that FractureBridge has already reduced future fractures.</span></div>
+    </Card>
+    <Card className="mt-6 p-5">
+      <Eyebrow>Staffing question</Eyebrow>
+      <p className="mt-2 text-sm leading-relaxed text-slate-600">The pilot should measure weekly case volume and median reviewer time to determine staffing requirements before scale-up. The prototype does not assume that an existing team can absorb a particular volume.</p>
+    </Card>
+  </div>
 }
-
-export default Measures;

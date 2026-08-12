@@ -1,188 +1,80 @@
-import React, { useState } from "react";
-import { ChevronRight, Info } from "lucide-react";
-import { cx, STAGE_STYLE, SCREEN_FUNNEL } from "../data";
+import React, { useMemo, useState } from "react";
+import { ChevronRight, Info, Clock3, UserRoundPlus, LayoutList, Columns3 } from "lucide-react";
+import { cx, STAGE_STYLE } from "../data";
 import { Eyebrow, Card, StatusChip } from "../ui";
 
 const FILTERS = [
-  ["active", "Open cases"],
-  ["review", "Needs review"],
-  ["closed", "Closed"],
-  ["verified", "Follow-up verified"],
-  ["excluded", "Excluded"],
+  ["active", "Open"], ["review", "Needs review"], ["unassigned", "Unassigned"], ["aging", "Aging >30d"], ["closed", "Closed"]
 ];
-
 const GROUPS = {
   active: (c) => ["review", "owned", "contacted", "arranged", "documented"].includes(c.stage),
   review: (c) => c.stage === "review",
-  closed: (c) => c.stage === "closed",
-  verified: (c) => c.stage === "verified",
-  excluded: (c) => c.stage === "excluded",
+  unassigned: (c) => ["review", "owned"].includes(c.stage) && !c.owner,
+  aging: (c) => c.days > 30 && ["review", "owned"].includes(c.stage),
+  closed: (c) => ["closed", "verified", "excluded"].includes(c.stage),
 };
 
-function Worklist({ cases, onOpen }) {
+const escalation = (c) => {
+  if (!["review", "owned"].includes(c.stage)) return null;
+  if (!c.owner && c.days > 30) return { label: "Unassigned + aging", tone: "border-rose-200 bg-rose-50 text-rose-700" };
+  if (!c.owner) return { label: "Needs owner", tone: "border-amber-200 bg-amber-50 text-amber-700" };
+  if (c.days > 60) return { label: "Aging", tone: "border-rose-200 bg-rose-50 text-rose-700" };
+  return null;
+};
+
+function Worklist({ cases, onOpen, role = "Care coordinator" }) {
   const [filter, setFilter] = useState("active");
-  const shown = cases.filter(GROUPS[filter]);
+  const [layout, setLayout] = useState("table");
+  const shown = useMemo(() => cases.filter(GROUPS[filter]).sort((a,b)=>b.days-a.days), [cases, filter]);
   const count = (k) => cases.filter(GROUPS[k]).length;
+  const kpis = [
+    ["Needs review", count("review"), "text-amber-700", "bg-amber-50"],
+    ["Unassigned", count("unassigned"), "text-slate-800", "bg-slate-100"],
+    ["In progress", cases.filter((c)=>["owned","contacted","arranged","documented"].includes(c.stage)).length, "text-sky-700", "bg-sky-50"],
+    ["Aging >30 days", count("aging"), "text-rose-700", "bg-rose-50"],
+  ];
+  const roleLine = role === "Clinician" ? "Clinical review queue: verify context and decide whether follow-up is appropriate." : role === "Quality leader" ? "Operational queue shown for context; program metrics live in Analytics." : "Action-first view: who needs attention, how long the case has been open, and who owns the next step.";
 
-  const patients = 268;
-  const covered = 171;
-  const gaps = patients - covered;
-
-  return (
-    <div>
-      <header className="mb-6">
-        <Eyebrow>Fragility fracture care-gap program · Austin market</Eyebrow>
-        <h1 className="mt-2 max-w-3xl font-serif text-4xl leading-tight text-slate-900">
-          The fracture was already found.
-          <span className="block text-slate-400">This is who owns what happens next.</span>
-        </h1>
-      </header>
-
-      {/* the story in one card */}
-      <Card className="mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-5">
-          <div className="border-b border-slate-100 p-5 lg:col-span-2 lg:border-b-0 lg:border-r">
-            <Eyebrow>Six months, one market</Eyebrow>
-            <div className="mt-3 space-y-3">
-              {SCREEN_FUNNEL.map((f, i) => (
-                <div key={f.step}>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className={cx("truncate text-xs", i === 3 ? "font-medium text-amber-700" : "text-slate-500")}>
-                      {f.step}
-                    </span>
-                    <span className="shrink-0 font-mono text-sm tabular-nums text-slate-900">{f.n.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ background: f.hex, width: `${i === 0 ? 100 : (f.n / SCREEN_FUNNEL[i - 1].n) * 100}%` }}
-                    />
-                  </div>
-                  <div className="mt-0.5 font-mono text-xs text-slate-400">
-                    {i === 0 ? "all reports in the market" : `${((f.n / SCREEN_FUNNEL[i - 1].n) * 100).toFixed(i === 1 ? 1 : 0)}% of the step above`}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-5 lg:col-span-3">
-            <div className="flex items-baseline justify-between">
-              <Eyebrow>Of 268 patients with a fracture in the report</Eyebrow>
-              <span className="font-mono text-xs text-slate-400">follow-up check</span>
-            </div>
-            <div className="mt-3 flex h-14 overflow-hidden rounded-lg">
-              <div className="flex items-center justify-center bg-teal-700 text-white" style={{ width: `${(covered / patients) * 100}%` }}>
-                <span className="font-serif text-2xl tabular-nums">{covered}</span>
-              </div>
-              <div className="flex items-center justify-center bg-amber-500 text-white" style={{ width: `${(gaps / patients) * 100}%` }}>
-                <span className="font-serif text-2xl tabular-nums">{gaps}</span>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
-                  <span className="h-2 w-2 rounded-full bg-teal-700" /> Already had follow-up
-                </div>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  No worklist entry created. The system stands down.
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
-                  <span className="h-2 w-2 rounded-full bg-amber-500" /> No follow-up found
-                </div>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                  Routed to a named human. 87% confirmed as real gaps after review.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* queue */}
-      <div className="mb-3 flex flex-wrap gap-2">
-        {FILTERS.map(([k, label]) => (
-          <button
-            key={k}
-            onClick={() => setFilter(k)}
-            className={cx(
-              "rounded-full border px-3 py-1 text-sm transition-colors",
-              filter === k ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
-            )}
-          >
-            {label} <span className="font-mono text-xs opacity-60">{count(k)}</span>
-          </button>
-        ))}
+  return <div>
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <Eyebrow>Operational worklist · {role}</Eyebrow>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-900">Cases requiring human review or follow-up</h1>
+        <p className="mt-2 text-sm text-slate-600">{roleLine}</p>
       </div>
-
-      <Card>
-        <div className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-xs uppercase tracking-wider text-slate-400 sm:flex sm:px-5">
-          <span className="w-1.5 shrink-0" />
-          <span className="w-40 shrink-0">Patient</span>
-          <span className="min-w-0 flex-1">Finding</span>
-          <span className="w-28 shrink-0 text-right">Elapsed</span>
-          <span className="hidden w-32 shrink-0 lg:block">Follow-up / owner</span>
-          <span className="w-36 shrink-0">Status</span>
-          <span className="w-4 shrink-0" />
-        </div>
-        <div className="divide-y divide-slate-100">
-          {shown.map((c) => {
-            const s = STAGE_STYLE[c.stage];
-            const empties = c.followUp.filter((f) => f.status === "none").length;
-            const aging = c.days > 90 && ["review", "owned"].includes(c.stage);
-            return (
-              <button
-                key={c.id}
-                onClick={() => onOpen(c.id)}
-                className="group flex w-full items-center gap-4 px-4 py-3.5 text-left transition-colors hover:bg-slate-50 sm:px-5"
-              >
-                <span className={cx("h-9 w-1.5 shrink-0 rounded-full", s.bar)} />
-                <div className="w-40 shrink-0">
-                  <div className="truncate font-medium text-slate-900">{c.name}</div>
-                  <div className="font-mono text-xs text-slate-400">
-                    {c.age}{c.sex} · {c.level}
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm text-slate-700">{c.finding}</div>
-                  <div className="truncate font-mono text-xs text-slate-400">{c.exam}</div>
-                </div>
-                <div className="hidden w-28 shrink-0 text-right sm:block">
-                  <span className={cx("font-mono text-sm tabular-nums", aging ? "font-medium text-rose-600" : "text-slate-500")}>
-                    {c.days}d
-                  </span>
-                </div>
-                <div className="hidden w-32 shrink-0 lg:block">
-                  {c.stage === "review" ? (
-                    <span className="rounded bg-amber-50 px-2 py-0.5 font-mono text-xs text-amber-700">
-                      0 of {c.followUp.length} found
-                    </span>
-                  ) : (
-                    <span className="block truncate text-xs text-slate-500">{c.owner ? c.owner.split(" —")[0] : "—"}</span>
-                  )}
-                </div>
-                <span className="w-36 shrink-0"><StatusChip stage={c.stage} /></span>
-                <ChevronRight size={16} className="shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" />
-              </button>
-            );
-          })}
-          {shown.length === 0 && (
-            <div className="px-5 py-12 text-center text-sm text-slate-500">
-              Nothing in this queue. New cases arrive after the overnight report run.
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-500">
-        <Info size={14} className="mt-0.5 shrink-0" />
-        Order is rule-based triage — age, prior fragility fracture, glucocorticoid exposure, time since report, and how
-        explicit the report language is. It is not a predicted fracture risk.
-      </p>
+      <div className="flex rounded-lg border border-slate-300 bg-white p-1 text-xs">
+        <button onClick={()=>setLayout("table")} className={cx("flex items-center gap-1 rounded-md px-2.5 py-1.5",layout==="table"?"bg-slate-900 text-white":"text-slate-600")}><LayoutList size={14}/>Table</button>
+        <button onClick={()=>setLayout("board")} className={cx("flex items-center gap-1 rounded-md px-2.5 py-1.5",layout==="board"?"bg-slate-900 text-white":"text-slate-600")}><Columns3 size={14}/>Board</button>
+      </div>
+    </header>
+    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900"><strong>Illustrative pilot data.</strong> Fictional patients and demonstration workflow only.</div>
+    <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      {kpis.map(([label,n,tone,bg]) => <Card key={label} className={cx("p-4", bg)}><div className={cx("text-2xl font-semibold", tone)}>{n}</div><div className="mt-1 text-sm font-medium text-slate-700">{label}</div></Card>)}
     </div>
-  );
+    <div className="mb-3 flex flex-wrap gap-2">{FILTERS.map(([k,label])=><button key={k} onClick={()=>setFilter(k)} className={cx("rounded-full border px-3 py-1 text-sm", filter===k?"border-slate-900 bg-slate-900 text-white":"border-slate-300 bg-white text-slate-600 hover:bg-slate-50")}>{label} <span className="font-mono text-xs opacity-60">{count(k)}</span></button>)}</div>
+
+    {layout === "table" ? <Card>
+      <div className="hidden items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-2 font-mono text-xs uppercase tracking-wider text-slate-400 sm:flex">
+        <span className="w-1.5"/><span className="w-40">Patient</span><span className="min-w-0 flex-1">Finding / study</span><span className="w-24 text-right">Elapsed</span><span className="w-40">Follow-up evidence</span><span className="w-40">Owner</span><span className="w-28">Status</span><span className="w-5"/>
+      </div>
+      <div className="divide-y divide-slate-100">
+        {shown.map(c=>{const st=STAGE_STYLE[c.stage]||STAGE_STYLE.closed; const esc=escalation(c); return <button key={c.id} onClick={()=>onOpen(c.id)} className="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-slate-50 sm:gap-4 sm:px-5">
+          <span className={cx("h-8 w-1.5 shrink-0 rounded-full",st.dot)}/>
+          <div className="w-40 min-w-0"><div className="truncate text-sm font-semibold text-slate-900">{c.name}</div><div className="font-mono text-xs text-slate-400">{c.age} · {c.id}</div></div>
+          <div className="min-w-0 flex-1"><div className="truncate text-sm text-slate-800">{c.finding}</div><div className="truncate text-xs text-slate-500">{c.exam} · {c.reportDate}</div>{esc&&<span className={cx("mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium",esc.tone)}>{esc.label}</span>}</div>
+          <div className={cx("hidden w-24 text-right sm:block", c.days>60&&["review","owned"].includes(c.stage)?"text-rose-700":"text-slate-600")}><div className="text-sm font-semibold tabular-nums">{c.days}d</div><div className="text-xs text-slate-400">since finding</div></div>
+          <div className="hidden w-40 text-xs text-slate-600 md:block">{["review","owned"].includes(c.stage)?"No relevant evidence found in connected record":"Follow-up underway or resolved"}</div>
+          <div className="hidden w-40 lg:block"><div className={cx("truncate text-xs font-medium",c.owner?"text-teal-800":"text-amber-700")}>{c.owner?c.owner.split(" —")[0]:"Unassigned"}</div></div>
+          <div className="hidden w-28 sm:block"><StatusChip stage={c.stage}/></div>
+          <ChevronRight size={16} className="ml-auto shrink-0 text-slate-300"/>
+        </button>})}
+        {shown.length===0&&<div className="px-5 py-12 text-center text-sm text-slate-500">No cases in this view.</div>}
+      </div>
+      <div className="flex items-start gap-2 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs leading-relaxed text-slate-600"><Info size={14} className="mt-0.5 shrink-0"/>“No follow-up evidence found” means the connected demonstration sources did not contain relevant evidence. It does not prove that care did not occur elsewhere.</div>
+    </Card> : <div className="grid gap-4 md:grid-cols-3">
+      {["review","owned","contacted"].map(stage=><Card key={stage} className="min-h-[260px]"><div className="border-b border-slate-100 bg-slate-50 px-4 py-3"><div className="text-sm font-semibold text-slate-800">{stage==="review"?"Needs review":stage==="owned"?"Owned":"Patient contacted"}</div><div className="text-xs text-slate-400">{shown.filter(c=>c.stage===stage).length} cases</div></div><div className="space-y-2 p-3">{shown.filter(c=>c.stage===stage).map(c=><button key={c.id} onClick={()=>onOpen(c.id)} className="w-full rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-teal-300 hover:bg-teal-50/40"><div className="text-sm font-semibold text-slate-900">{c.name}</div><div className="mt-1 text-xs text-slate-600">{c.finding}</div><div className="mt-2 flex items-center justify-between"><span className="flex items-center gap-1 text-xs text-slate-500"><Clock3 size={12}/>{c.days}d</span><span className={cx("flex items-center gap-1 text-xs",c.owner?"text-teal-700":"text-amber-700")}><UserRoundPlus size={12}/>{c.owner?c.owner.split(" —")[0]:"Unassigned"}</span></div></button>)}</div></Card>)}
+    </div>}
+  </div>;
 }
 
 export default Worklist;

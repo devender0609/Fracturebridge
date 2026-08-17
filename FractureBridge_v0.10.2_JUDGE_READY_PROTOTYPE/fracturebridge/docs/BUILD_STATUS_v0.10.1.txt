@@ -1,0 +1,1 @@
+Build not reproduced in this sandbox. Package installation timed out/unavailable. Run npm ci && npm run build in normal CI/Vercel before sharing the deployed URL.

@@ -1,27 +1,28 @@
 import React, { useMemo, useState } from "react";
 import { ChevronRight, Info } from "lucide-react";
-import { cx, STAGE_STYLE } from "../data";
+import { cx, STAGE_STYLE, WHY_HERE } from "../data";
 import { Eyebrow, Card, StatusChip } from "../ui";
 
 const FILTERS = [["active","Open"],["review","Needs review"],["unassigned","Unassigned"],["aging","Aging >30d"],["closed","Closed"]];
 const GROUPS = {
-  active:c=>["review","owned","contacted","arranged","documented"].includes(c.stage),
+  active:c=>["review","owned","outreach","reached","evaluation","documented"].includes(c.stage),
   review:c=>c.stage==="review",
   unassigned:c=>["review","owned"].includes(c.stage)&&!c.owner,
   aging:c=>c.days>30&&["review","owned"].includes(c.stage),
-  closed:c=>["closed","verified","excluded"].includes(c.stage),
+  closed:c=>["closed","verified","excluded","resolved","unreached"].includes(c.stage),
 };
 
-export default function Worklist({ cases, onOpen, role="Care coordinator" }) {
-  const [filter,setFilter]=useState("active");
-  const shown=useMemo(()=>cases.filter(GROUPS[filter]).sort((a,b)=>b.days-a.days),[cases,filter]);
+export default function Worklist({ cases, onOpen, role="Care coordinator", initialFilter="active" }) {
+  const [filter,setFilter]=useState(initialFilter);
+  const ORDER={review:0,owned:1,outreach:2,reached:3,evaluation:4,documented:5,closed:6,unreached:7,resolved:8,verified:9,excluded:10};
+  const shown=useMemo(()=>cases.filter(GROUPS[filter]).sort((a,b)=>(ORDER[a.stage]-ORDER[b.stage])||(b.days-a.days)),[cases,filter]);
   const count=k=>cases.filter(GROUPS[k]).length;
-  const roleLine=role==="Clinician"?"Review the finding, context, and available evidence before deciding whether follow-up is appropriate.":role==="Quality leader"?"Operational view of cases; program measurement is summarized separately in Analytics.":"Focused queue for cases that need human review, ownership, or follow-up.";
+  const roleLine=role==="Clinician"?"What needs my review: the finding, its context, the evidence summary, and the disposition.":role==="Quality leader"?"Is the pathway working? This view is read-only; measurement is on the Analytics page.":"Who needs attention today: unassigned cases, outreach pending, and aging cases.";
 
   return <div>
     <header className="mb-5">
       <Eyebrow>Operational worklist · {role}</Eyebrow>
-      <h1 className="mt-2 text-3xl font-semibold text-slate-900">Cases requiring attention</h1>
+      <h1 className="mt-2 font-serif text-3xl text-slate-900">{role==="Clinician"?"What needs my review":role==="Quality leader"?"Is the pathway working?":"Who needs attention today"}</h1>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">{roleLine}</p>
     </header>
 
@@ -43,10 +44,10 @@ export default function Worklist({ cases, onOpen, role="Care coordinator" }) {
         <span>Patient</span><span>Finding / study</span><span>Elapsed</span><span>Owner</span><span>Status</span><span/>
       </div>
       <div className="divide-y divide-slate-100">{shown.map(c=>{
-        const s=STAGE_STYLE[c.stage]; const none=c.followUp?.some(f=>f.status==="none"); const aging=c.days>30&&["review","owned"].includes(c.stage);
+        const s=STAGE_STYLE[c.stage]; const aging=c.days>30&&["review","owned"].includes(c.stage);
         return <button key={c.id} onClick={()=>onOpen(c.id)} className="group grid w-full grid-cols-1 gap-3 px-5 py-4 text-left hover:bg-slate-50 md:grid-cols-[1.15fr_2.3fr_0.7fr_1.25fr_1fr_24px] md:items-center md:gap-5">
           <div className="flex min-w-0 items-start gap-3"><span className={cx("mt-0.5 h-10 w-1.5 shrink-0 rounded-full",s.bar)}/><div className="min-w-0"><div className="truncate font-medium text-slate-900">{c.name}</div><div className="mt-0.5 font-mono text-xs text-slate-400">{c.age} yrs · {c.id}</div></div></div>
-          <div className="min-w-0"><div className="text-sm font-medium leading-5 text-slate-800">{c.finding}</div><div className="mt-1 truncate text-xs text-slate-500">{c.exam} · {c.reportDate}</div>{none&&<div className="mt-1.5 text-xs text-amber-700">No relevant follow-up evidence visible in connected demo sources</div>}</div>
+          <div className="min-w-0"><div className="text-sm font-medium leading-5 text-slate-800">{c.finding}</div><div className="mt-1 truncate text-xs text-slate-500">{c.exam} · {c.reportDate}</div>{WHY_HERE[c.stage]&&<div className={cx("mt-1.5 inline-flex items-center rounded px-2 py-0.5 text-xs",c.stage==="review"?"bg-amber-50 text-amber-700":"bg-slate-100 text-slate-600")}>{WHY_HERE[c.stage]}</div>}</div>
           <div><div className={cx("font-mono text-sm",aging?"font-semibold text-rose-600":"text-slate-600")}>{c.days}d</div><div className="text-[11px] text-slate-400">since finding</div></div>
           <div className={cx("truncate text-sm",c.owner?"text-teal-800":"font-medium text-amber-700")}>{c.owner?c.owner.split(" —")[0]:"Unassigned"}</div>
           <div><StatusChip stage={c.stage}/></div>
@@ -56,6 +57,6 @@ export default function Worklist({ cases, onOpen, role="Care coordinator" }) {
       </div>
     </Card>
 
-    <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-500"><Info size={14} className="mt-0.5 shrink-0"/>“No follow-up evidence found” means no relevant evidence was visible in the connected demonstration sources. It does not prove that care did not occur elsewhere. Human review is required.</p>
+    <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-slate-500" title="Workflow ordering only — not a fracture-risk or clinical-urgency score."><Info size={14} className="mt-0.5 shrink-0"/>“No relevant follow-up evidence visible” means exactly that: nothing was visible in the connected demonstration sources. It does not prove that care did not occur elsewhere, which is why a person reviews every case.</p>
   </div>;
 }

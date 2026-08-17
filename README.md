@@ -1,146 +1,139 @@
 # FractureBridge
 
-**Accountable care-gap closure after a vertebral compression-fracture finding has already been documented.**
+**Accountable, human-reviewed follow-up after a vertebral compression-fracture finding is documented.**
 
-A woman in her seventies has a CT for abdominal pain. The radiologist documents a chronic L1
-compression deformity. The abdominal problem is treated. The fracture — a warning sign for the next
-fracture — never reaches anyone whose job it is to act on it.
+A woman in her seventies has a CT for abdominal pain. The radiologist documents a chronic-appearing L1 compression
+deformity. The abdominal problem is treated. The fracture — which may matter for future fracture risk — never reaches
+anyone whose job it is to act on it.
 
 The fracture was found. No one owned what happened next.
 
-FractureBridge reads radiology reports that already exist, checks whether bone-health follow-up
-already happened, and puts the remainder in front of a named human with a clock on it. It tracks each
-case until the loop is closed or closed with a stated reason.
+FractureBridge reads radiology reports that already exist, checks whether relevant bone-health follow-up is already
+visible in connected sources, and routes only the remainder to a named human. It tracks each case until it is
+appropriately resolved.
 
-> **This is a demonstration prototype.** All patients, reports, and metrics are fictional. There is no
-> EHR connection, no real AI inference, and no patient data of any kind. Nothing here is validated for
-> clinical use.
+> **Demonstration prototype.** All patients, reports, and numbers are fictional. There is no EHR connection, no real AI
+> inference, no patient messaging, and no clinical validation. Nothing here is Ascension data or observed performance.
 
 ---
 
+## Navigation
+
+**Overview** — what is FractureBridge? **Worklist** — who needs attention? **Case** — why is this patient here and what
+happens next? **Analytics** — is the workflow functioning? **How it works** — what does the AI do, what do people
+decide, and how could this connect to an EHR?
+
+The high-level workflow tracker is six stages: Finding → Review → Owner → Outreach → Evaluation → Outcome. Substates
+(outreach attempted versus patient reached, evaluation initiated versus documented) live in the audit trail.
+
+Case detail opens from the worklist and from the Overview example; it has no navigation item of its own.
+
+## The clinical sequence
+
+1. **Report finding** — a radiology report contains vertebral compression-fracture language.
+2. **Follow-up evidence check** — connected sources are checked within defined lookback windows.
+3. **Potential follow-up gap** — no relevant evidence is visible in the connected record.
+4. **Human review** — a person confirms context, outside care, eligibility, and whether action is appropriate.
+5. **Actionable case / ownership** — if appropriate, a named human owns the next step.
+
+A patient is never described as a confirmed care gap before human review.
+
 ## What the system does — and does not do
 
-**Does:** screens report text for vertebral compression-fracture language; extracts level, chronicity, and how
-explicit the language is; searches nine follow-up sources across defined lookback windows; stands down
-when follow-up is already documented; orders the queue by explicit, inspectable triage rules;
-summarizes the case; drafts patient-readable language for a human to edit and approve; routes to a
-named owner with a timestamped audit trail.
+**Supports:** finding fracture language in existing reports; checking connected sources for follow-up evidence;
+summarizing what was found and what is uncertain; drafting clinician and patient communication for human approval;
+keeping a timestamped record.
 
-**Does not:** diagnose osteoporosis; decide whether a fracture is osteoporotic; order a DXA;
-prescribe; place a referral; send anything to a patient without human approval; predict who will
-fracture next; make any final clinical decision.
+**Does not:** diagnose osteoporosis; determine fracture etiology or label a fracture osteoporotic; prescribe; order DXA
+or any test; place referrals; contact patients; predict future fracture; make any final clinical decision.
 
-The rule-based triage order is **not** a risk prediction. Upstream fracture-risk modelling appears in
-the product only as an explicitly labelled future concept.
+Queue ordering is operational only — workflow state and elapsed time. There is no fracture-risk or clinical-urgency
+score. Age, prior fracture and glucocorticoid exposure appear as clinical context for the reviewer.
+
+## How a reviewed case can end
+
+Three distinct families, never collapsed into one bucket and never into "false positives":
+
+| Family | Meaning | Counts as a screening exclusion? |
+|---|---|---|
+| **Not appropriate for this pathway** *(screening exclusion)* | Outside pathway scope — trauma, pathologic fracture, degenerative change, duplicate, extraction error | Yes |
+| **Relevant care already exists** *(follow-up already addressed)* | The reviewer identified care that was not visible in the initial connected sources, including outside-system care | No |
+| **Reviewed — no further action required** *(human-reviewed disposition)* | Reviewed, and no additional action is indicated — clinician judgment, patient declined after outreach, goals of care, other documented reason | No |
+| **Unable to reach** *(outreach incomplete)* | Outreach attempted and the patient was not reached. Operational, not clinical: not care completed, not follow-up addressed, not patient contact. Reported separately | No |
+
+Every closure records a responsible human, a reason, and a timestamp.
 
 ---
 
 ## Quick start
 
 ```bash
-npm install
-npm run dev      # http://localhost:5173
-npm run build    # production build to ./dist
-npm run preview  # serve the production build locally
+npm ci        # or: npm install
+npm run dev   # http://localhost:5173
+npm run build # production build to ./dist
+npm run preview
 ```
 
 Requires Node 18 or newer.
 
----
-
 ## Deploy
 
-### Push to GitHub
+Push to GitHub, then import the repo in Vercel. `vercel.json` declares the Vite framework, `npm run build`, and `dist`;
+no environment variables are needed. The app is fully static.
 
-```bash
-git init
-git add .
-git commit -m "FractureBridge prototype"
-git branch -M main
-git remote add origin https://github.com/<your-username>/fracturebridge.git
-git push -u origin main
-```
-
-### Deploy on Vercel
-
-**From the dashboard (easiest):** New Project → Import the GitHub repo → Vercel detects Vite from
-`vercel.json` → Deploy. Build command `npm run build`, output directory `dist`. No environment
-variables are needed; the app is fully static.
-
-**From the CLI:**
-
-```bash
-npm i -g vercel
-vercel        # preview deployment
-vercel --prod # production deployment
-```
-
-`vercel.json` sets an `X-Robots-Tag: noindex` header, and `index.html` carries a `noindex` meta tag,
-so a public demo URL will not be indexed by search engines. Keep both in place while the prototype is
-shared with reviewers.
-
----
+`noindex` discourages search-engine indexing; **it is not access control**. The deployment is not private or secure
+merely because `noindex` is set — anyone with the URL can open it. Because every patient and value in the prototype is
+fictional, sharing a demonstration URL with a committee is acceptable; do not treat the URL as confidential.
 
 ## Project structure
 
 ```
-index.html               Page shell, fonts, noindex meta
-vercel.json              Vercel build + noindex headers
-tailwind.config.js       Type scale and font stacks
+index.html               Page shell, fonts, favicon, noindex meta
+vercel.json              Vercel build settings and noindex header
+tailwind.config.js       Font stacks
 src/
   main.jsx               React entry point
   index.css              Tailwind layers, focus ring, reduced-motion
-  data.js                Constants, colour tokens, and the entire fictional dataset
+  data.js                Colour tokens, disposition families, fictional cases, simulated pilot figures
   ui.jsx                 Design atoms and the Bridge stage tracker
-  App.jsx                Shell, navigation, guided-demo runner
+  App.jsx                Shell, navigation, demo perspective, guided demo
   views/
-    Worklist.jsx         Case-finding funnel and the review queue
-    CaseDetail.jsx       Report, extraction, follow-up check, ownership, letter, audit
-    LoopBoard.jsx        Six-lane operational board plus excluded and verified cases
-    Measures.jsx         Four categories of pilot instrumentation (Recharts; lazy-loaded)
-    HowItWorks.jsx       Scope limits, positioning, architecture, governance
+    Overview.jsx         Problem, Find/Check/Route, funnel, one demo case
+    Worklist.jsx         Operational queue, one cue per row
+    CaseDetail.jsx       Why this case is here → what was checked → what happens next → decision
+    Measures.jsx         Five question-led measurement sections, bottleneck first, framework/scenario toggle
+    HowItWorks.jsx       AI scope, hard limits, taxonomy, data scope, EHR concept, boundary, references
+                         (the "How it works" page)
 docs/
-  demo-script.md         75-second walkthrough for a panel
+  demo-script.md         Guided walkthrough for a panel
+  QA_v0.10.1.md          What was tested, and what remains simulated
+  committee-demo-guide.md  What to click in 60 seconds
 ```
 
-### Changing the demo data
+## Pilot data scope and EHR integration
 
-Everything shown is in `src/data.js`. Each case carries its report lines (`hl: true` marks the
-highlighted passage), the extraction fields, a `followUp` array of evidence checks with source and
-lookback window, `verify` items requiring human judgement, its workflow `stage`, and an `audit` array.
-`STAGES` defines the seven piers of the bridge; `EXCLUSION_REASONS` defines the fixed reason list a
-reviewer must choose from.
+The first-phase evidence check uses radiology report text, orders, DXA/BMD results, medication data, and structured
+referrals or encounters where available. Free-text clinical notes, outside-system documentation and broader
+interoperability feeds are optional later sources; note-text checks appear in the case view under *Optional future
+source — not required for the first-phase workflow*. Lookback windows are illustrative configurable pilot windows, not
+universal clinical standards.
 
-### Where a real integration would attach
+**How it works** carries a conceptual **How FractureBridge could fit into the EHR** section with FHIR resource mappings
+(DiagnosticReport, DocumentReference, ServiceRequest, Observation, MedicationRequest, MedicationStatement, Encounter,
+Task, Communication/CommunicationRequest) and SMART App Launch as a possible future embedding pattern. All of it is
+conceptual and subject to EHR capabilities, security, governance and local implementation. FractureBridge is not a
+SMART on FHIR app, has no FHIR connection, and no vendor or organisation is claimed to support any of it.
 
-The screening step, the follow-up check, and the letter drafting are deliberately separate so each can
-be validated, replaced, or switched off on its own. The **How it works** page lists the data each
-would require — `DiagnosticReport`, `Observation`, `ServiceRequest`, `MedicationRequest`,
-`DocumentReference`, `Condition` — as planned integrations. None exist in this repository.
+## Which values are simulated
 
----
+The Overview funnel (12,480 → 412 → 268; 171 stand down, 97 routed) is an illustrative six-month single-market
+simulation, labelled on the card. Analytics defaults to a **pilot measurement framework** with no simulated values;
+switching to **illustrative demo scenario** reveals them, labelled at every chart. Operational metrics — confirmation
+rate, cases per week, review time, time to owner assignment, reviewer effort — read **To measure**. Longer-term
+outcomes read **Not yet measured**. There is no before/after improvement figure anywhere in the product. The full list
+is in `docs/QA_v0.10.1.md`.
 
-## Colour is state, never decoration
+## Status
 
-Each workflow stage owns one colour, defined once in `STAGE_STYLE` in `src/data.js` and reused
-identically on the bridge, the board lanes, the queue dots, the status chips and the charts. Violet
-always means an AI action; teal always means a human one; rose marks a case that is both actionable
-and aging. Changing a stage colour in one place changes it everywhere.
-
-## Two things to fix before this is shown as evidence
-
-1. **Analytics are illustrative only.** The dashboard intentionally avoids invented pre/post performance claims. Replace demonstration values with real pilot data only after validation.
-
-2. **The nine-source follow-up check depends on note-text search**, which is the hardest of the eight
-   listed integrations to actually obtain. Scope the pilot around what the data feed can really
-   deliver.
-
----
-
-## Prior art
-
-Fracture liaison services and opportunistic fracture-detection tools already exist and work. This is
-neither. The claim here is narrower: the combination of case identification, follow-up verification,
-accountable routing, clinician engagement, patient engagement, and closed-loop tracking, over
-information the health system already holds — aimed at the incidental vertebral fracture that never
-may otherwise enter an established fracture liaison or bone-health pathway.
+This is a working prototype for design and workflow discussion. It is not validated, not production ready, not
+clinically deployed, not EHR integrated, not FHIR integrated, not proven, and not complete.

@@ -25,3 +25,11 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Guided-demo spotlight: lifts the explained area above the scrim. */
+.demo-spot {
+  position: relative;
+  z-index: 25;
+  box-shadow: 0 0 0 3px #0f766e, 0 12px 30px rgba(15, 23, 42, 0.18);
+  border-radius: 0.75rem;
+}

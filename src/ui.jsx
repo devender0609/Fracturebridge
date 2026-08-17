@@ -1,6 +1,6 @@
 import React from "react";
-import { Check } from "lucide-react";
-import { cx, STAGES, STAGE_INDEX, STAGE_STYLE } from "./data";
+import { Check, Square } from "lucide-react";
+import { cx, STAGES, STAGE_INDEX, STAGE_STYLE, TERMINAL_STAGES, DISPOSITIONS, HUMAN_FROM } from "./data";
 
 /* ------------------------------ atoms ------------------------------ */
 
@@ -22,7 +22,7 @@ export const CardHead = ({ eyebrow, title, right, accent = "bg-slate-300" }) => 
       <span className={cx("mt-1 h-8 w-1 shrink-0 rounded-full", accent)} />
       <div>
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h3 className="mt-0.5 text-lg font-semibold leading-snug text-slate-900">{title}</h3>
+        <h3 className="mt-0.5 font-serif text-lg leading-snug text-slate-900">{title}</h3>
       </div>
     </div>
     {right && <div className="shrink-0">{right}</div>}
@@ -84,19 +84,24 @@ export const RowBar = ({ label, value, max, note, color = "bg-teal-600" }) => (
 /* Seven piers. Each carries a named owner. The span that has not been  */
 /* built yet is drawn as a gap, because that is the whole product.      */
 
-export const Bridge = ({ stage, owner }) => {
-  const done = STAGE_INDEX[stage] ?? 2;
-  const isDead = stage === "excluded" || stage === "verified";
+export const Bridge = ({ stage, owner, stoppedAt, disposition, closureReason }) => {
+  const terminal = TERMINAL_STAGES.includes(stage);
+  const ended = stage !== "closed" && terminal;
+  /* Piers complete: for a live case, the stage index; for a case that ended
+     early, however far it actually got. A terminal case never falls back to
+     showing "human review" as the pending step. */
+  const done = ended ? stoppedAt ?? STAGE_INDEX.review : STAGE_INDEX[stage] ?? STAGE_INDEX.review;
   const hue = STAGE_STYLE[stage] || STAGE_STYLE.closed;
+  const fam = disposition ? DISPOSITIONS[disposition] : null;
 
   return (
     <div>
       <div className="flex min-w-full items-stretch overflow-x-auto pb-1">
         {STAGES.map((s, i) => {
           const complete = i < done;
-          const current = i === done && !isDead;
+          const current = i === done && !terminal;
           return (
-            <div key={s.key} className="flex min-w-0 flex-1 flex-col" style={{ minWidth: 96 }}>
+            <div key={s.key} className="flex min-w-0 flex-1 flex-col" style={{ minWidth: 76 }}>
               <div className="flex items-center">
                 <div
                   className={cx(
@@ -111,10 +116,12 @@ export const Bridge = ({ stage, owner }) => {
                       ? "border-teal-700 bg-teal-700 text-white"
                       : current
                       ? cx("border-2", hue.ring, hue.soft, hue.text)
+                      : ended && i === done
+                      ? "border-slate-400 bg-slate-100 text-slate-500"
                       : "border-slate-200 bg-white text-slate-300"
                   )}
                 >
-                  {complete ? <Check size={14} strokeWidth={3} /> : <span className="font-mono">{i + 1}</span>}
+                  {complete ? <Check size={14} strokeWidth={3} /> : ended && i === done ? <Square size={11} strokeWidth={3} /> : <span className="font-mono">{i + 1}</span>}
                 </div>
                 <div
                   className={cx(
@@ -128,18 +135,34 @@ export const Bridge = ({ stage, owner }) => {
                   {s.label}
                 </div>
                 <div className="mt-0.5 truncate font-mono text-xs leading-tight text-slate-400">
-                  {current && owner ? owner.split(" —")[0] : current ? "unassigned" : s.by}
+                  {current && owner ? owner.split(" —")[0] : current ? "unassigned" : ended && i === done ? "stopped here" : s.by}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
-      {isDead && (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
-          {stage === "verified"
-            ? "This patient never reached the worklist. Follow-up was already documented, so the check was logged and the system stood down."
-            : "Closed with a reason before outreach. The span was never built, and the record says why."}
+
+      <div className="mt-2 flex gap-1">
+        <div className="border-t border-slate-200 pt-1.5" style={{ width: `${(HUMAN_FROM / STAGES.length) * 100}%` }}>
+          <span className="font-mono text-xs uppercase tracking-wider text-slate-400">Machine-supported screening</span>
+        </div>
+        <div className="border-t-2 border-teal-600 pt-1.5" style={{ width: `${((STAGES.length - HUMAN_FROM) / STAGES.length) * 100}%` }}>
+          <span className="font-mono text-xs uppercase tracking-wider text-teal-700">Human judgment and action</span>
+        </div>
+      </div>
+
+      {terminal && (
+        <div
+          className={cx(
+            "mt-3 rounded-lg border px-4 py-2.5 text-sm",
+            stage === "closed" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-600"
+          )}
+        >
+          <span className="font-medium">{STAGE_STYLE[stage]?.name}</span>
+          {fam && <span> · {fam.label}</span>}
+          {closureReason && <span> — {closureReason}</span>}
+          {stage === "closed" && <span> — evaluation completed and outcome documented.</span>}
         </div>
       )}
     </div>

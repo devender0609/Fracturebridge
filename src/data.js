@@ -16,48 +16,140 @@ export const TEAM = [
 /* These are the piers of the bridge. Each one has a named owner.      */
 
 export const STAGES = [
-  { key: "reported", label: "Fracture reported", by: "Radiology" },
-  { key: "flagged", label: "Gap identified", by: "FractureBridge" },
-  { key: "review", label: "Human review", by: "Fracture liaison" },
-  { key: "owned", label: "Owner assigned", by: "Named person" },
-  { key: "contacted", label: "Patient contacted", by: "Care team" },
-  { key: "arranged", label: "Evaluation arranged", by: "Ordering clinician" },
-  { key: "closed", label: "Plan documented", by: "Clinician of record" },
+  { key: "finding", label: "Finding", by: "Radiology" },
+  { key: "review", label: "Review", by: "Human reviewer" },
+  { key: "owner", label: "Owner", by: "Named person" },
+  { key: "outreach", label: "Outreach", by: "Care team" },
+  { key: "evaluation", label: "Evaluation", by: "Clinician" },
+  { key: "outcome", label: "Outcome", by: "Clinician" },
 ];
 
+/* The visual boundary between machine-supported screening and human judgment
+   sits after the finding: everything from Review onward is a person. */
+export const HUMAN_FROM = 1;
+
+/* Number of piers complete when a case sits in this stage. */
 export const STAGE_INDEX = {
-  review: 2,
+  review: 1,
   owned: 3,
-  contacted: 4,
-  arranged: 5,
-  documented: 6,
-  closed: 7,
+  outreach: 3,
+  reached: 4,
+  evaluation: 4,
+  documented: 5,
+  closed: 6,
 };
 
-export const LANES = [
-  { key: "review", label: "Needs review" },
-  { key: "owned", label: "Owned" },
-  { key: "contacted", label: "Patient contacted" },
-  { key: "arranged", label: "Evaluation arranged" },
-  { key: "documented", label: "Plan documented" },
-  { key: "closed", label: "Closed" },
-];
+/* Terminal states. A case that ends here does not fall back to Human review:
+   the bridge shows the piers it reached, then an end-cap. */
+export const TERMINAL_STAGES = ["closed", "excluded", "verified", "resolved", "unreached"];
 
-export const EXCLUSION_REASONS = [
-  "High-energy trauma — not eligible for this pathway",
-  "Pathologic fracture — known malignancy",
-  "Degenerative change / Schmorl node — not a fracture",
-  "Duplicate of an existing case",
-  "Report extraction error",
-];
+/* ------------------- how a reviewed case can end -------------------- *
+ * Three distinct families. They are never collapsed into one bucket and
+ * never into "false positives": only family A is a screening exclusion.
+ * -------------------------------------------------------------------- */
+
+export const DISPOSITIONS = {
+  screening: {
+    key: "screening",
+    stage: "excluded",
+    label: "Not appropriate for this pathway",
+    term: "Screening exclusion",
+    short: "Outside pathway scope",
+    help: "The finding should not have entered the pathway. These reasons are the case-finding refinement signal for the screen.",
+    reasons: [
+      "High-energy trauma — outside pathway scope",
+      "Pathologic fracture — known malignancy",
+      "Degenerative change or Schmorl node — not a fracture",
+      "Duplicate of an existing case",
+      "Report extraction error",
+    ],
+  },
+  addressed: {
+    key: "addressed",
+    stage: "verified",
+    label: "Relevant care already exists",
+    term: "Follow-up already addressed",
+    short: "Already receiving care",
+    help: "The reviewer identified care that was not visible in the initial connected sources. Not a screening exclusion.",
+    reasons: [
+      "Active osteoporosis therapy documented",
+      "Recent bone-health evaluation documented",
+      "Established fracture-liaison follow-up",
+      "Outside-system care confirmed by the reviewer",
+    ],
+  },
+  clinical: {
+    key: "clinical",
+    stage: "resolved",
+    label: "Reviewed — no further action required",
+    term: "Human-reviewed disposition",
+    short: "Clinician or care team reviewed",
+    help: "A clinician or care-team member reviewed the case and documented why no additional action is indicated. Not a screening exclusion.",
+    reasons: [
+      "Treating clinician determined no additional action indicated",
+      "Patient declined after outreach",
+      "Goals of care — comfort-focused",
+      "Other documented clinical reason",
+    ],
+  },
+  outreach: {
+    key: "outreach",
+    stage: "unreached",
+    label: "Unable to reach",
+    term: "Outreach incomplete",
+    short: "Operational, not clinical",
+    help: "Outreach was attempted and the patient was not reached. This may stop repeated outreach under the pilot protocol. It is not a clinical closure, not care completed, and not patient contact. Reported separately.",
+    requiresOutreach: true,
+    reasons: ["Unable to reach after the defined outreach protocol"],
+  },
+};
+
+/* Workflow-only next step. Never a clinical recommendation. */
+export const NEXT_STEP = {
+  review: "Human review",
+  owned: "Patient outreach",
+  outreach: "Patient response",
+  reached: "Evaluation status",
+  evaluation: "Document outcome",
+  documented: "Confirm pathway complete",
+  closed: "None — pathway complete",
+  excluded: "None — closed with a documented reason",
+  verified: "None — closed with a documented reason",
+  resolved: "None — closed with a documented reason",
+  unreached: "None — outreach protocol exhausted",
+};
+
+/* One short cue for the worklist. One only. */
+export const WHY_HERE = {
+  review: "Needs human review",
+  owned: "Needs outreach",
+  outreach: "Outreach pending",
+  reached: "Evaluation pending",
+  evaluation: "Awaiting outcome",
+  documented: "Ready to close",
+};
+
+/* G: windows are configuration, not clinical standards. */
+export const LOOKBACK_NOTE =
+  "Illustrative configurable pilot windows — not universal clinical standards.";
 
 /* --------------------------- demo dataset -------------------------- */
 
-const fu = (label, status, source, lookback, note) => ({
+const FU_OPT = (label, status, source, lookback, note) => fu(label, status, source, lookback, note, true);
+
+/* Context, not follow-up evidence: it informs the reviewer, it does not close
+   anything, and it must never render as a green tick. */
+const FU_CTX = (label, status, source, lookback, note) => ({
+  ...fu(label, status, source, lookback, note),
+  context: true,
+});
+
+const fu = (label, status, source, lookback, note, optional = false) => ({
   label,
   status,
   source,
   lookback,
+  optional,
   note,
 });
 
@@ -104,8 +196,7 @@ export const CASES = [
     level: "L1",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "High",
-    priorityFactors: [
+    clinicalContext: [
       "Age 74",
       "Prior low-trauma fracture documented (distal radius, 2024)",
       "No relevant bone-health follow-up evidence found in the connected demonstration record",
@@ -113,20 +204,20 @@ export const CASES = [
     ],
     report: MARGARET_REPORT,
     verify: [
-      "Confirm whether the L1 deformity is consistent with a fragility-fracture context and not traumatic or pathologic",
-      "Confirm the 2024 wrist fracture was low-energy",
-      "Confirm no bone-health care is being delivered outside this health system",
+      "Confirm the fracture context and whether the case is appropriate for this pathway",
+      "Confirm the 2024 wrist fracture context with the patient or record",
+      "Check whether relevant care is being delivered outside this health system",
     ],
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("DXA order", "none", "Orders", "24 months", "No order placed"),
       fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "No bisphosphonate, denosumab, or anabolic agent"),
-      fu("Calcium / vitamin D", "partial", "Medication list", "12 months", "Vitamin D 1000 IU on the home list — supplementation alone is not an osteoporosis evaluation"),
+      FU_CTX("Calcium / vitamin D", "partial", "Medication list", "12 months", "Vitamin D 1000 IU on the home list — supplementation alone is not an osteoporosis evaluation"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "No referral found"),
       fu("Endocrinology referral", "none", "Referrals", "24 months", "No referral found"),
-      fu("Osteoporosis assessment in notes", "none", "Note text", "24 months", "No documented assessment or discussion"),
-      fu("Prior fracture history", "found", "Problem list / imaging", "5 years", "Distal radius fracture, March 2024 — raises priority, does not close the gap"),
-      fu("Documented clinical review of this finding", "none", "Note text", "Since report date", "No note references the L1 finding"),
+      FU_OPT("Osteoporosis assessment in notes", "none", "Note text", "24 months", "No documented assessment or discussion"),
+      FU_CTX("Prior fracture history", "found", "Problem list / imaging", "5 years", "Distal radius fracture, March 2024"),
+      FU_OPT("Documented clinical review of this finding", "none", "Note text", "Since report date", "No note references the L1 finding"),
     ],
     stage: "review",
     owner: null,
@@ -145,13 +236,13 @@ export const CASES = [
         ts: "May 3, 2026 · 2:05a",
         actor: "FractureBridge",
         ai: true,
-        text: "Follow-up check run across 9 sources. No relevant bone-health follow-up evidence found in the connected demonstration record.",
+        text: "Configured follow-up sources checked. No relevant bone-health follow-up evidence found in the connected demonstration record.",
       },
       {
         ts: "May 3, 2026 · 2:06a",
         actor: "FractureBridge",
         ai: true,
-        text: "Case placed on the review worklist. Priority: High. No clinical action taken.",
+        text: "Case placed on the human-review worklist by operational queue order. No clinical action taken and no urgency score assigned.",
       },
     ],
   },
@@ -169,8 +260,7 @@ export const CASES = [
     level: "T12",
     chronicity: "Age indeterminate",
     confidence: "Equivocal report language",
-    priority: "High",
-    priorityFactors: ["Age 81", "No follow-up evidence found in the demonstration record"],
+    clinicalContext: ["Age 81", "No follow-up evidence found in the demonstration record"],
     report: [
       { t: "EXAM: Lumbar spine, AP and lateral.", head: true },
       { t: "INDICATION: 81-year-old woman with chronic low back pain." },
@@ -183,16 +273,16 @@ export const CASES = [
       { t: "1. T12 wedge deformity, age indeterminate. 2. Lumbar spondylosis.", hl: true },
     ],
     verify: [
-      "Report language is equivocal — confirm this represents a fracture rather than a developmental or degenerative deformity",
-      "Confirm no bone-health care outside this health system",
+      "Report language is equivocal — confirm this represents a fracture",
+      "Check for relevant care outside this health system",
     ],
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("DXA order", "none", "Orders", "24 months", "No order placed"),
       fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "None found"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "No referral found"),
-      fu("Osteoporosis assessment in notes", "none", "Note text", "24 months", "No documented assessment"),
-      fu("Prior fracture history", "none", "Problem list / imaging", "5 years", "None found"),
+      FU_OPT("Osteoporosis assessment in notes", "none", "Note text", "24 months", "No documented assessment"),
+      FU_CTX("Prior fracture history", "none", "Problem list / imaging", "5 years", "None found"),
     ],
     stage: "review",
     owner: null,
@@ -223,8 +313,7 @@ export const CASES = [
     level: "T8",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "Medium",
-    priorityFactors: ["Age 69", "Long-term inhaled and oral steroid use on medication list", "No follow-up evidence found"],
+    clinicalContext: ["Age 69", "Long-term inhaled and oral steroid use on medication list", "No follow-up evidence found"],
     report: [
       { t: "EXAM: Low-dose CT chest without contrast.", head: true },
       { t: "INDICATION: Lung cancer screening, 69-year-old former smoker." },
@@ -238,15 +327,15 @@ export const CASES = [
       { t: "1. Lung-RADS 2. Continue annual screening. 2. Chronic T8 compression deformity.", hl: true },
     ],
     verify: [
-      "Confirm glucocorticoid exposure and duration with the prescribing clinician",
-      "Confirm the deformity is not post-traumatic",
+      "Confirm glucocorticoid exposure with the prescribing clinician",
+      "Confirm the fracture context",
     ],
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "None found"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "None found"),
-      fu("Osteoporosis assessment in notes", "none", "Note text", "24 months", "None found"),
-      fu("Glucocorticoid exposure", "found", "Medication list", "24 months", "Prednisone courses x3 and chronic inhaled steroid — raises priority"),
+      FU_OPT("Osteoporosis assessment in notes", "none", "Note text", "24 months", "None found"),
+      FU_CTX("Glucocorticoid exposure", "found", "Medication list", "24 months", "Prednisone courses x3 and chronic inhaled steroid"),
     ],
     stage: "review",
     owner: null,
@@ -255,7 +344,7 @@ export const CASES = [
       "Dear Mr. Vasquez,\n\nYour recent CT scan noted a compression deformity in one of the bones of your mid-back. In some adults, this type of finding may be associated with weakened bone. Your care team would like to review whether additional bone-health evaluation may be appropriate.\n\n— Bone Health Program, Austin market",
     audit: [
       { ts: "Jul 1, 2026 · 9:02a", actor: "Radiology", text: "Report finalized by radiologist." },
-      { ts: "Jul 2, 2026 · 2:04a", actor: "FractureBridge", ai: true, text: "Flagged for review. Priority: Medium." },
+      { ts: "Jul 2, 2026 · 2:04a", actor: "FractureBridge", ai: true, text: "Routed for human review. No urgency score assigned." },
     ],
   },
   {
@@ -272,20 +361,19 @@ export const CASES = [
     level: "L2",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "High",
-    priorityFactors: ["Age 77", "No follow-up evidence found in the demonstration record"],
+    clinicalContext: ["Age 77", "No follow-up evidence found in the demonstration record"],
     report: [
       { t: "EXAM: CT abdomen and pelvis.", head: true },
       { t: "FINDINGS", head: true },
       { t: "Resolved sigmoid diverticulitis. No abscess." },
       { t: "Osseous: Chronic L2 compression deformity with 25% height loss.", hl: true },
     ],
-    verify: ["Confirm low-energy mechanism", "Confirm no outside bone-health care"],
+    verify: ["Confirm the fracture context", "Check for relevant care outside this health system"],
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "None found"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "None found"),
-      fu("Osteoporosis assessment in notes", "none", "Note text", "24 months", "None found"),
+      FU_OPT("Osteoporosis assessment in notes", "none", "Note text", "24 months", "None found"),
     ],
     stage: "owned",
     owner: TEAM[0],
@@ -295,7 +383,7 @@ export const CASES = [
     audit: [
       { ts: "Apr 18, 2026 · 3:40p", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Apr 19, 2026 · 2:02a", actor: "FractureBridge", ai: true, text: "Flagged for review. No follow-up evidence found in the connected demonstration record." },
-      { ts: "Apr 21, 2026 · 10:15a", actor: TEAM[0], text: "Care gap confirmed after chart review. Case assigned." },
+      { ts: "Apr 21, 2026 · 10:15a", actor: TEAM[0], text: "Human review confirmed the case is actionable. Case assigned." },
     ],
   },
   {
@@ -312,20 +400,19 @@ export const CASES = [
     level: "T11",
     chronicity: "Acute or subacute",
     confidence: "Explicit report language",
-    priority: "High",
-    priorityFactors: ["Age 72", "Acute fracture with edema", "No follow-up evidence found"],
+    clinicalContext: ["Age 72", "Acute fracture with edema", "No follow-up evidence found"],
     report: [
       { t: "EXAM: MRI lumbar spine without contrast.", head: true },
       { t: "FINDINGS", head: true },
       { t: "T11 compression fracture with marrow edema, suggesting acute or subacute injury. No retropulsion or cord compression.", hl: true },
     ],
-    verify: ["Confirm low-energy mechanism", "Confirm pain management plan is in place"],
+    verify: ["Confirm the fracture context", "Confirm a pain management plan is in place"],
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "None found"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "None found"),
     ],
-    stage: "contacted",
+    stage: "reached",
     owner: TEAM[1],
     letterApproved: true,
     letter:
@@ -333,7 +420,7 @@ export const CASES = [
     audit: [
       { ts: "Mar 30, 2026 · 1:10p", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Mar 31, 2026 · 2:01a", actor: "FractureBridge", ai: true, text: "Flagged for review." },
-      { ts: "Apr 2, 2026 · 9:30a", actor: TEAM[1], text: "Care gap confirmed. Case assigned." },
+      { ts: "Apr 2, 2026 · 9:30a", actor: TEAM[1], text: "Human review confirmed the case is actionable. Case assigned." },
       { ts: "Apr 4, 2026 · 11:00a", actor: TEAM[1], text: "Patient letter approved and sent. Phone outreach completed — patient agreeable to evaluation." },
     ],
   },
@@ -351,8 +438,7 @@ export const CASES = [
     level: "T12",
     chronicity: "Chronic-appearing",
     confidence: "Probable report language",
-    priority: "High",
-    priorityFactors: ["Age 84", "Fall history", "No follow-up evidence found"],
+    clinicalContext: ["Age 84", "Fall history", "No follow-up evidence found"],
     report: [
       { t: "EXAM: CT chest without contrast.", head: true },
       { t: "INDICATION: Chronic cough.", head: false },
@@ -363,18 +449,18 @@ export const CASES = [
     followUp: [
       fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study on file"),
       fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "None found"),
-      fu("Falls assessment", "found", "Note text", "12 months", "Falls screening documented — relevant but not a bone-health evaluation"),
+      FU_CTX("Falls assessment", "found", "Note text", "12 months", "Falls screening documented — not a bone-health evaluation"),
     ],
-    stage: "arranged",
+    stage: "evaluation",
     owner: TEAM[2],
     letterApproved: true,
     letter: "Dear Ms. Boyle,\n\nYour recent CT report noted a compression deformity in your spine...\n\n— Bone Health Program, Austin market",
     audit: [
       { ts: "Mar 9, 2026 · 8:45a", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Mar 10, 2026 · 2:02a", actor: "FractureBridge", ai: true, text: "Flagged for review." },
-      { ts: "Mar 12, 2026 · 1:20p", actor: TEAM[0], text: "Care gap confirmed. Assigned to primary care." },
-      { ts: "Mar 18, 2026 · 4:05p", actor: TEAM[2], text: "Patient contacted. DXA ordered." },
-      { ts: "Mar 26, 2026 · 9:00a", actor: TEAM[2], text: "DXA scheduled for Apr 9." },
+      { ts: "Mar 12, 2026 · 1:20p", actor: TEAM[0], text: "Human review confirmed the case is actionable. Assigned to primary care." },
+      { ts: "Mar 18, 2026 · 4:05p", actor: TEAM[2], text: "DEMONSTRATION: patient reached. Evaluation initiated by the treating clinician." },
+      { ts: "Mar 26, 2026 · 9:00a", actor: TEAM[2], text: "DEMONSTRATION: evaluation scheduled." },
     ],
   },
   {
@@ -391,8 +477,7 @@ export const CASES = [
     level: "L3",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "Medium",
-    priorityFactors: ["Age 73", "No follow-up evidence found at time of flag"],
+    clinicalContext: ["Age 73", "No follow-up evidence found at time of flag"],
     report: [
       { t: "EXAM: CT abdomen and pelvis.", head: true },
       { t: "FINDINGS", head: true },
@@ -411,10 +496,10 @@ export const CASES = [
     audit: [
       { ts: "Feb 24, 2026 · 2:30p", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Feb 25, 2026 · 2:03a", actor: "FractureBridge", ai: true, text: "Flagged for review. No follow-up evidence found in the connected demonstration record." },
-      { ts: "Feb 27, 2026 · 10:00a", actor: TEAM[0], text: "Care gap confirmed. Assigned to Bone Health Clinic." },
-      { ts: "Mar 4, 2026 · 3:15p", actor: TEAM[1], text: "Patient letter approved and sent. Outreach call completed." },
-      { ts: "Apr 14, 2026 · 11:00a", actor: TEAM[1], text: "DXA completed. T-score -2.8." },
-      { ts: "Apr 22, 2026 · 9:40a", actor: TEAM[1], text: "Treatment plan documented: alendronate, vitamin D, follow-up in 12 months." },
+      { ts: "Feb 27, 2026 · 10:00a", actor: TEAM[0], text: "Human review confirmed the case is actionable. Assigned to Bone Health Clinic." },
+      { ts: "Mar 4, 2026 · 3:15p", actor: TEAM[1], text: "DEMONSTRATION: patient communication approved by the owner; simulated outreach recorded. Patient reached. No message was sent by this prototype." },
+      { ts: "Apr 14, 2026 · 11:00a", actor: TEAM[1], text: "DEMONSTRATION: evaluation completed; result available to the treating clinician." },
+      { ts: "Apr 22, 2026 · 9:40a", actor: TEAM[1], text: "DEMONSTRATION: outcome documented — treatment plan recorded by the treating clinician." },
     ],
   },
   {
@@ -431,8 +516,7 @@ export const CASES = [
     level: "L1",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "Medium",
-    priorityFactors: ["Age 79", "No follow-up evidence found at time of flag"],
+    clinicalContext: ["Age 79", "No follow-up evidence found at time of flag"],
     report: [
       { t: "EXAM: CT abdomen and pelvis.", head: true },
       { t: "FINDINGS", head: true },
@@ -442,7 +526,7 @@ export const CASES = [
     followUp: [
       fu("DXA / BMD result", "found", "Imaging results feed", "24 months", "DXA completed Feb 20, 2026 — T-score -2.5"),
       fu("Osteoporosis pharmacotherapy", "found", "Medication list", "12 months", "Denosumab started Mar 2026"),
-      fu("Osteoporosis assessment in notes", "found", "Note text", "24 months", "Bone Health Clinic note, Mar 3, 2026"),
+      FU_OPT("Osteoporosis assessment in notes", "found", "Note text", "24 months", "Bone Health Clinic note, Mar 3, 2026"),
     ],
     stage: "closed",
     owner: TEAM[1],
@@ -451,11 +535,11 @@ export const CASES = [
     audit: [
       { ts: "Jan 12, 2026 · 4:00p", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Jan 13, 2026 · 2:01a", actor: "FractureBridge", ai: true, text: "Flagged for review. No follow-up evidence found in the connected demonstration record." },
-      { ts: "Jan 15, 2026 · 9:20a", actor: TEAM[0], text: "Care gap confirmed. Assigned." },
+      { ts: "Jan 15, 2026 · 9:20a", actor: TEAM[0], text: "Human review confirmed the case is actionable. Assigned." },
       { ts: "Jan 20, 2026 · 2:00p", actor: TEAM[1], text: "Patient letter approved and sent. Outreach completed." },
-      { ts: "Feb 20, 2026 · 10:30a", actor: TEAM[1], text: "DXA completed. T-score -2.5." },
-      { ts: "Mar 3, 2026 · 11:15a", actor: TEAM[1], text: "Treatment plan documented. Denosumab started." },
-      { ts: "Mar 3, 2026 · 11:18a", actor: TEAM[1], text: "Loop closed: evaluation completed and plan documented." },
+      { ts: "Feb 20, 2026 · 10:30a", actor: TEAM[1], text: "DEMONSTRATION: evaluation completed; result available to the treating clinician." },
+      { ts: "Mar 3, 2026 · 11:15a", actor: TEAM[1], text: "DEMONSTRATION: outcome documented by the treating clinician." },
+      { ts: "Mar 3, 2026 · 11:18a", actor: TEAM[1], text: "DEMONSTRATION: pathway completed — evaluation completed and outcome documented." },
     ],
   },
   {
@@ -472,8 +556,7 @@ export const CASES = [
     level: "T7",
     chronicity: "Chronic-appearing",
     confidence: "Explicit report language",
-    priority: "—",
-    priorityFactors: [],
+    clinicalContext: [],
     report: [
       { t: "EXAM: CT abdomen and pelvis.", head: true },
       { t: "FINDINGS", head: true },
@@ -483,9 +566,12 @@ export const CASES = [
     followUp: [
       fu("DXA / BMD result", "found", "Imaging results feed", "24 months", "DXA completed Aug 2025 — T-score -2.6"),
       fu("Osteoporosis pharmacotherapy", "found", "Medication list", "12 months", "Alendronate 70 mg weekly, active"),
-      fu("Osteoporosis assessment in notes", "found", "Note text", "24 months", "Endocrinology note, Sep 2025"),
+      FU_OPT("Osteoporosis assessment in notes", "found", "Note text", "24 months", "Endocrinology note, Sep 2025"),
     ],
     stage: "verified",
+    stoppedAt: 2,
+    disposition: "addressed",
+    closureReason: "Active osteoporosis therapy documented",
     owner: null,
     letterApproved: false,
     letter: "",
@@ -497,6 +583,88 @@ export const CASES = [
         ai: true,
         text: "Fracture language identified. Follow-up check found active osteoporosis treatment and a DXA within 24 months. No worklist entry created. Logged for audit only.",
       },
+    ],
+  },
+  {
+    id: "FB-04275",
+    name: "Beatrice Lyman",
+    age: 78,
+    sex: "F",
+    mrn: "DEMO-86904",
+    exam: "CT abdomen/pelvis",
+    indication: "Abdominal pain",
+    reportDate: "Feb 11, 2026",
+    days: 183,
+    finding: "L2 compression deformity",
+    level: "L2",
+    chronicity: "Chronic-appearing",
+    confidence: "Explicit report language",
+    clinicalContext: ["Age 78", "No relevant follow-up evidence visible in the configured sources"],
+    report: [
+      { t: "EXAM: CT abdomen and pelvis.", head: true },
+      { t: "FINDINGS", head: true },
+      { t: "Chronic L2 compression deformity with 25% height loss.", hl: true },
+    ],
+    verify: [],
+    followUp: [
+      fu("DXA / BMD result", "none", "Imaging results", "24 months", "No study visible in the configured demonstration sources"),
+      fu("DXA order", "none", "Orders", "24 months", "No order visible"),
+      fu("Osteoporosis pharmacotherapy", "none", "Medication data", "12 months", "None visible"),
+      fu("Bone-health or FLS referral", "none", "Referrals / encounters", "24 months", "None visible"),
+    ],
+    stage: "unreached",
+    stoppedAt: 3,
+    disposition: "outreach",
+    closureReason: "Unable to reach after the defined outreach protocol",
+    owner: TEAM[1],
+    letterApproved: true,
+    letter: "Dear Ms. Lyman,\n\nYour recent CT scan noted a compression fracture in your spine...\n\n— Bone Health Program, Austin market",
+    audit: [
+      { ts: "Feb 11, 2026 · 1:05p", actor: "Radiology", text: "Report finalized by radiologist." },
+      { ts: "Feb 12, 2026 · 2:02a", actor: "FractureBridge", ai: true, text: "Vertebral compression-fracture language identified. Configured follow-up sources checked; no relevant evidence visible. Routed for human review." },
+      { ts: "Feb 16, 2026 · 9:20a", actor: TEAM[0], text: "Human review confirmed the case is actionable. Owner assigned." },
+      { ts: "Feb 18, 2026 · 11:00a", actor: TEAM[1], text: "DEMONSTRATION: patient communication approved by the owner; simulated outreach recorded. No message was sent by this prototype." },
+      { ts: "Mar 6, 2026 · 4:30p", actor: TEAM[1], text: "Outreach incomplete — unable to reach after the defined outreach protocol. Operational disposition recorded; not a clinical closure and not patient contact." },
+    ],
+  },
+  {
+    id: "FB-04289",
+    name: "Ruth Delgado",
+    age: 80,
+    sex: "F",
+    mrn: "DEMO-87021",
+    exam: "CT abdomen/pelvis",
+    indication: "Weight loss workup",
+    reportDate: "Jan 6, 2026",
+    days: 219,
+    finding: "T12 compression deformity",
+    level: "T12",
+    chronicity: "Chronic-appearing",
+    confidence: "High",
+    clinicalContext: [],
+    report: [
+      { t: "EXAM: CT abdomen and pelvis.", head: true },
+      { t: "FINDINGS", head: true },
+      { t: "Chronic T12 compression deformity with 20% height loss.", hl: true },
+    ],
+    verify: [],
+    followUp: [
+      fu("DXA / BMD result", "none", "Imaging results feed", "24 months", "No study visible in the connected demonstration sources"),
+      fu("Osteoporosis pharmacotherapy", "none", "Medication list", "12 months", "None visible"),
+      fu("Bone-health or FLS referral", "none", "Referrals", "24 months", "None visible"),
+    ],
+    stage: "resolved",
+    stoppedAt: 4,
+    disposition: "clinical",
+    closureReason: "Patient declined evaluation",
+    owner: TEAM[0],
+    letterApproved: true,
+    letter: "Dear Ms. Delgado,\n\nYour recent CT scan noted a compression fracture in your spine...\n\n— Bone Health Program, Austin market",
+    audit: [
+      { ts: "Jan 6, 2026 · 2:15p", actor: "Radiology", text: "Report finalized by radiologist." },
+      { ts: "Jan 7, 2026 · 2:02a", actor: "FractureBridge", ai: true, text: "Vertebral compression-fracture language identified. No relevant follow-up evidence visible in the connected demonstration sources. Routed for human review." },
+      { ts: "Jan 9, 2026 · 10:40a", actor: TEAM[0], text: "Reviewed and assigned. DEMONSTRATION: outreach approved by the assigned owner; no message was sent." },
+      { ts: "Jan 21, 2026 · 3:05p", actor: TEAM[0], text: "Clinically reviewed closure — patient declined evaluation. Recorded by the assigned owner. Not a screening exclusion." },
     ],
   },
   {
@@ -513,8 +681,7 @@ export const CASES = [
     level: "T12",
     chronicity: "Acute",
     confidence: "Explicit report language",
-    priority: "—",
-    priorityFactors: [],
+    clinicalContext: [],
     report: [
       { t: "EXAM: CT thoracic spine.", head: true },
       { t: "INDICATION: Restrained driver, high-speed motor vehicle collision." },
@@ -534,7 +701,7 @@ export const CASES = [
     audit: [
       { ts: "Mar 20, 2026 · 7:40p", actor: "Radiology", text: "Report finalized by radiologist." },
       { ts: "Mar 21, 2026 · 2:01a", actor: "FractureBridge", ai: true, text: "Flagged for review — mechanism not determinable from report text alone." },
-      { ts: "Mar 21, 2026 · 8:30a", actor: TEAM[0], text: "Excluded after review: high-energy trauma. Reason recorded for false-positive analysis." },
+      { ts: "Mar 21, 2026 · 8:30a", actor: TEAM[0], text: "Excluded after review: high-energy trauma. Reason recorded for screening-performance analysis." },
     ],
   },
   {
@@ -551,8 +718,7 @@ export const CASES = [
     level: "L3",
     chronicity: "Acute",
     confidence: "Explicit report language",
-    priority: "—",
-    priorityFactors: [],
+    clinicalContext: [],
     report: [
       { t: "EXAM: CT chest, abdomen and pelvis.", head: true },
       { t: "FINDINGS", head: true },
@@ -563,7 +729,9 @@ export const CASES = [
       fu("Oncology involvement", "found", "Referrals", "12 months", "Active oncology care, radiation oncology consulted"),
     ],
     stage: "excluded",
-    excludeReason: "Pathologic fracture — known malignancy",
+    stoppedAt: 2,
+    disposition: "screening",
+    closureReason: "Pathologic fracture — known malignancy",
     owner: TEAM[0],
     letterApproved: false,
     letter: "",
@@ -600,8 +768,8 @@ export const STAGE_STYLE = {
     bar: "bg-sky-500",
     hex: "#0ea5e9",
   },
-  contacted: {
-    name: "Patient contacted",
+  reached: {
+    name: "Patient reached",
     dot: "bg-indigo-500",
     soft: "bg-indigo-50",
     text: "text-indigo-800",
@@ -609,8 +777,8 @@ export const STAGE_STYLE = {
     bar: "bg-indigo-500",
     hex: "#6366f1",
   },
-  arranged: {
-    name: "Evaluation arranged",
+  evaluation: {
+    name: "Evaluation initiated",
     dot: "bg-teal-500",
     soft: "bg-teal-50",
     text: "text-teal-800",
@@ -619,7 +787,7 @@ export const STAGE_STYLE = {
     hex: "#14b8a6",
   },
   documented: {
-    name: "Plan documented",
+    name: "Documented outcome",
     dot: "bg-emerald-500",
     soft: "bg-emerald-50",
     text: "text-emerald-800",
@@ -628,7 +796,8 @@ export const STAGE_STYLE = {
     hex: "#10b981",
   },
   closed: {
-    name: "Closed",
+    name: "Pathway completed",
+    term: "Evaluation completed and outcome documented",
     dot: "bg-slate-400",
     soft: "bg-slate-100",
     text: "text-slate-600",
@@ -636,8 +805,38 @@ export const STAGE_STYLE = {
     bar: "bg-slate-400",
     hex: "#94a3b8",
   },
+  outreach: {
+    name: "Outreach attempted",
+    dot: "bg-indigo-400",
+    soft: "bg-indigo-50",
+    text: "text-indigo-800",
+    ring: "border-indigo-200",
+    bar: "bg-indigo-400",
+    hex: "#818cf8",
+  },
+  unreached: {
+    name: "Unable to reach",
+    term: "Outreach incomplete",
+    dot: "bg-slate-400",
+    soft: "bg-slate-50",
+    text: "text-slate-600",
+    ring: "border-slate-300",
+    bar: "bg-slate-400",
+    hex: "#94a3b8",
+  },
+  resolved: {
+    name: "Reviewed — no further action",
+    term: "Human-reviewed disposition",
+    dot: "bg-slate-300",
+    soft: "bg-slate-50",
+    text: "text-slate-500",
+    ring: "border-slate-200",
+    bar: "bg-slate-300",
+    hex: "#cbd5e1",
+  },
   verified: {
-    name: "Follow-up verified",
+    name: "Already receiving care",
+    term: "Follow-up already addressed",
     dot: "bg-slate-300",
     soft: "bg-slate-50",
     text: "text-slate-500",
@@ -646,7 +845,8 @@ export const STAGE_STYLE = {
     hex: "#cbd5e1",
   },
   excluded: {
-    name: "Excluded",
+    name: "Not for this pathway",
+    term: "Screening exclusion",
     dot: "bg-slate-300",
     soft: "bg-slate-50",
     text: "text-slate-500",
@@ -659,49 +859,230 @@ export const STAGE_STYLE = {
 export const AI_HEX = "#7c3aed";
 export const HUMAN_HEX = "#0f766e";
 
-/* ------------------------- pilot instrumentation ------------------- */
-/* Simulated figures for the demonstration. Replace with real pilot     */
-/* extracts before any of this is shown as evidence.                    */
+/* ------------------------- pilot instrumentation ------------------- *
+ * Every number below is an ILLUSTRATIVE SIMULATION used to show what the
+ * dashboard would display. None of it is observed performance, and none of
+ * it comes from Ascension. Metrics that a pilot would have to measure are
+ * represented as TO_MEASURE rather than invented.
+ * ------------------------------------------------------------------- */
 
+export const TO_MEASURE = "To measure";
+
+/* Illustrative six-month, single-market simulation.
+   171 + 97 = 268 (see COVERAGE below). */
 export const SCREEN_FUNNEL = [
   { step: "Reports screened", n: 12480, hex: "#cbd5e1" },
-  { step: "Fracture language", n: 412, hex: "#a5b4fc" },
+  { step: "Reports with fracture language", n: 412, hex: "#a5b4fc" },
   { step: "Unique patients", n: 268, hex: "#6366f1" },
-  { step: "Care gaps routed", n: 97, hex: "#f59e0b" },
+  { step: "Routed for human review", n: 97, hex: "#f59e0b" },
 ];
 
-export const EXCLUSION_DATA = [
+export const COVERAGE = {
+  patients: 268,
+  standDown: 171,
+  routed: 97,
+};
+
+/* Of the 97 routed for review: 74 + 12 + 7 + 4 = 97.
+   Only the 12 are screening exclusions. */
+export const REVIEW_DISPOSITION = [
+  { label: "Actionable after review", n: 74, hex: "#0ea5e9" },
+  { label: "Screening exclusion", n: 12, hex: "#f59e0b" },
+  { label: "Follow-up already addressed", n: 7, hex: "#14b8a6" },
+  { label: "Human-reviewed disposition", n: 4, hex: "#94a3b8" },
+];
+
+/* The 12 screening exclusions only. Outside-system care is NOT here —
+   it is a follow-up-already-addressed disposition. */
+export const SCREENING_EXCLUSION_DATA = [
   { reason: "High-energy trauma", n: 5 },
   { reason: "Pathologic fracture", n: 3 },
-  { reason: "Care outside system", n: 3 },
   { reason: "Degenerative change", n: 2 },
+  { reason: "Duplicate case", n: 1 },
+  { reason: "Extraction error", n: 1 },
 ];
 
 export const WEEKLY = [
-  { w: "W1", found: 5, closed: 0 },
-  { w: "W3", found: 4, closed: 1 },
-  { w: "W5", found: 6, closed: 2 },
-  { w: "W7", found: 3, closed: 3 },
-  { w: "W9", found: 5, closed: 4 },
-  { w: "W11", found: 4, closed: 3 },
-  { w: "W13", found: 4, closed: 5 },
-  { w: "W15", found: 3, closed: 4 },
-  { w: "W17", found: 5, closed: 5 },
-  { w: "W19", found: 4, closed: 6 },
-  { w: "W21", found: 3, closed: 5 },
-  { w: "W23", found: 4, closed: 6 },
-  { w: "W25", found: 3, closed: 5 },
+  { w: "W1", routed: 4, closed: 0 },
+  { w: "W2", routed: 3, closed: 0 },
+  { w: "W3", routed: 5, closed: 1 },
+  { w: "W4", routed: 4, closed: 1 },
+  { w: "W5", routed: 3, closed: 2 },
+  { w: "W6", routed: 4, closed: 2 },
+  { w: "W7", routed: 5, closed: 3 },
+  { w: "W8", routed: 3, closed: 2 },
+  { w: "W9", routed: 4, closed: 3 },
+  { w: "W10", routed: 4, closed: 3 },
+  { w: "W11", routed: 3, closed: 3 },
+  { w: "W12", routed: 5, closed: 4 },
+  { w: "W13", routed: 4, closed: 3 },
+  { w: "W14", routed: 3, closed: 3 },
+  { w: "W15", routed: 4, closed: 4 },
+  { w: "W16", routed: 3, closed: 3 },
+  { w: "W17", routed: 4, closed: 4 },
+  { w: "W18", routed: 5, closed: 3 },
+  { w: "W19", routed: 3, closed: 3 },
+  { w: "W20", routed: 4, closed: 4 },
+  { w: "W21", routed: 3, closed: 3 },
+  { w: "W22", routed: 4, closed: 3 },
+  { w: "W23", routed: 3, closed: 3 },
+  { w: "W24", routed: 3, closed: 4 },
+  { w: "W25", routed: 3, closed: 3 },
+  { w: "W26", routed: 4, closed: 4 },
 ];
 
+export const WEEKLY_TOTALS = { routed: 97, closed: 71 };
+
+/* Care-process cascade from the 74 actionable cases. */
 export const CASCADE = [
-  { step: "Care gaps confirmed", n: 84, hex: "#f59e0b" },
-  { step: "Patient outreach completed", n: 71, hex: "#0ea5e9" },
-  { step: "Bone-health evaluation completed", n: 44, hex: "#6366f1" },
-  { step: "DXA completed", n: 38, hex: "#14b8a6" },
-  { step: "Therapy started", n: 21, hex: "#10b981" },
+  { step: "Actionable after review", n: 74, hex: "#f59e0b" },
+  { step: "Outreach attempted", n: 71, hex: "#818cf8" },
+  { step: "Patient reached", n: 55, hex: "#6366f1" },
+  { step: "Evaluation initiated", n: 41, hex: "#14b8a6" },
+  { step: "Evaluation completed", n: 30, hex: "#0d9488" },
+  { step: "Documented outcome", n: 26, hex: "#10b981" },
 ];
 
-export const BASELINE = [
-  { period: "12 months before", pct: 19 },
-  { period: "Pilot period", pct: 52 },
+/* Reported separately. An unsuccessful attempt is never counted as contact. */
+export const OUTREACH_SPLIT = [
+  { label: "Patient reached", n: 55, hex: "#6366f1" },
+  { label: "Outreach incomplete", n: 16, hex: "#94a3b8" },
+];
+
+/* What each care-process step would have to mean before it is counted. */
+export const PROCESS_DEFINITIONS = [
+  ["Outreach attempted", "Human-approved communication is issued under the pilot outreach protocol. An attempt is only an attempt."],
+  ["Patient reached", "The communication is delivered and acknowledged, or the patient is spoken with. Attempts that do not reach the patient are never counted here."],
+  ["Outreach incomplete", "The outreach protocol is exhausted without reaching the patient. Reported separately as an operational disposition, not as care completed."],
+  ["Evaluation initiated", "A bone-health evaluation or DXA is ordered, or a bone-health visit is scheduled, by a clinician."],
+  ["Evaluation completed", "The evaluation or DXA is performed and the result is available."],
+  ["Documented outcome", "A clinician documents the assessment and plan, including a documented decision not to treat."],
+];
+
+/* 15: where open cases are waiting. Illustrative scenario values. */
+export const BOTTLENECK = [
+  { stage: "Human review", n: 9, hex: "#f59e0b" },
+  { stage: "Owner assignment", n: 4, hex: "#0ea5e9" },
+  { stage: "Outreach", n: 7, hex: "#818cf8" },
+  { stage: "Patient response", n: 6, hex: "#6366f1" },
+  { stage: "Evaluation", n: 5, hex: "#14b8a6" },
+  { stage: "Documentation", n: 3, hex: "#10b981" },
+];
+
+/* 16: reviewer-effort measures. Answering "does this reduce manual case
+   finding, or merely create another worklist?" — no savings claimed. */
+export const EFFORT_MEASURES = [
+  ["Reports screened automatically", "Volume the team never has to search by hand"],
+  ["Cases routed for human review", "What the workflow actually puts in front of a person"],
+  ["Percentage stood down because follow-up was already visible", "The share the team is spared"],
+  ["Median reviewer time per routed case", "Self-timed during the pilot"],
+  ["Cases requiring manual chart search", "Where the configured sources were not enough"],
+  ["Time from report finding to owner assignment", "How long accountability takes to attach"],
+];
+
+/* 17: one sentence, deliberately. Nothing else is built or shown. */
+export const PLATFORM_POTENTIAL =
+  "The same accountable follow-up architecture could eventually support other documented incidental findings, each requiring its own clinical pathway, governance, and validation.";
+
+/* MVP versus later data sources. Availability is an assumption to test in a
+   pilot, not a promise. */
+export const DATA_SCOPE = {
+  mvp: [
+    ["Radiology report text", "The documented finding itself"],
+    ["Orders", "Whether an evaluation was ordered but not completed"],
+    ["DXA / BMD results", "Whether a study exists and what it showed"],
+    ["Medication data", "Osteoporosis therapy, glucocorticoid exposure"],
+    ["Structured referrals / encounters, where available", "Bone health, endocrinology, fracture-liaison contact"],
+  ],
+  later: [
+    ["Free-text clinical notes", "Assessment documented only in prose — optional enrichment, not required for the first-phase workflow"],
+    ["Outside-system documentation", "Care delivered elsewhere"],
+    ["Broader interoperability feeds", "Regional, HIE or payer data"],
+  ],
+};
+
+/* H: conceptual mapping only. Nothing here is connected, and the correct
+   resource for a given system has to be validated locally. */
+export const FHIR_MAP = [
+  ["Radiology report", "DiagnosticReport where available; DocumentReference may also be relevant for unstructured report or document access."],
+  ["Orders and referrals", "ServiceRequest."],
+  ["DXA / BMD results", "DiagnosticReport together with Observation where appropriate. Observation alone does not necessarily represent a complete study."],
+  ["Medication information", "MedicationRequest may represent orders; MedicationStatement or an equivalent medication-list representation may be needed for actual or current use. Exact mapping must be validated."],
+  ["Completed visits", "Encounter. An encounter is not a ServiceRequest."],
+  ["Ownership and workflow status", "Task is the appropriate conceptual resource, since FractureBridge is fundamentally an accountable workflow."],
+  ["Patient communication", "CommunicationRequest could represent a request to communicate; Communication could represent an actual communication if one is performed and the EHR supports it. All patient communication remains human approved."],
+];
+
+export const EHR_FLOW_SIMPLE = [
+  { step: "EHR report", who: "system" },
+  { step: "FractureBridge — find + check", who: "machine" },
+  { step: "Human review", who: "human" },
+  { step: "Named owner + action", who: "human" },
+  { step: "Status documented", who: "human" },
+];
+
+export const EHR_FLOW = [
+  "Existing radiology report",
+  "FractureBridge case-finding service",
+  "Follow-up evidence check",
+  "Potential gap",
+  "Human worklist",
+  "Named owner",
+  "Human-approved next step",
+  "Documented workflow status / resolution",
+];
+
+/* I: what is demonstrated versus what would have to be built. */
+export const BOUNDARY = {
+  current: {
+    title: "Current demonstration",
+    tone: "teal",
+    items: [
+      "Fictional patients",
+      "Simulated AI outputs",
+      "In-memory workflow",
+      "No EHR connection",
+    ],
+  },
+  pilot: {
+    title: "Potential pilot",
+    tone: "amber",
+    items: [
+      "Approved report feed",
+      "Validated case-finding workflow",
+      "Configured source set",
+      "Human worklist",
+      "Process measurement",
+    ],
+  },
+  future: {
+    title: "Potential future integration",
+    tone: "slate",
+    items: [
+      "Embedded or linked EHR workflow",
+      "Governed workflow/status write-back",
+      "Broader outcome evaluation",
+    ],
+  },
+};
+
+export const WITHOUT_WITH = {
+  without: ["Fracture documented", "Report finalized", "No clear owner"],
+  with: ["Fracture documented", "Follow-up check", "Human review", "Named owner", "Documented outcome"],
+};
+
+/* P: authoritative references only. No prevalence, effectiveness or financial
+   claims are drawn from them into the product. */
+export const REFERENCES = [
+  ["ASBMR — Secondary Fracture Prevention Initiative: clinical recommendations", "https://www.asbmr.org/about/statement-detail/secondary-fracture-prevention-initiative-recommend"],
+  ["HL7 FHIR R4 — DiagnosticReport", "https://hl7.org/fhir/R4/diagnosticreport.html"],
+  ["HL7 FHIR R4 — DocumentReference", "https://hl7.org/fhir/R4/documentreference.html"],
+  ["HL7 FHIR R4 — ServiceRequest", "https://hl7.org/fhir/R4/servicerequest.html"],
+  ["HL7 FHIR R4 — Observation", "https://hl7.org/fhir/R4/observation.html"],
+  ["HL7 FHIR R4 — MedicationRequest", "https://hl7.org/fhir/R4/medicationrequest.html"],
+  ["HL7 FHIR R4 — MedicationStatement", "https://hl7.org/fhir/R4/medicationstatement.html"],
+  ["HL7 FHIR R4 — Encounter", "https://hl7.org/fhir/R4/encounter.html"],
+  ["HL7 FHIR R4 — Task", "https://hl7.org/fhir/R4/task.html"],
+  ["HL7 FHIR R4 — Communication and CommunicationRequest", "https://hl7.org/fhir/R4/communication.html"],
+  ["HL7 SMART App Launch", "https://hl7.org/fhir/smart-app-launch/"],
 ];
